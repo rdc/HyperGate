@@ -14,7 +14,7 @@ One must remember that the HyperGrid is just the 'potential' to federate. Once H
 With this in mind, if a region is connected to the HyperGrid but not connected to the HyperGate Network, is it really on the HyperGrid?
 
 
-Today the HyperGrid Network is by far the largest teleport network in the entire Metaverse, including the largest teleport networks in SecondLife (tm). In fact, today the HyperGate Network is larger than the two http://www.alpha-fox.com/about/ largest http://opengate.ma8p.com/list.cgi Secondlife (tm) teleport networks combined.
+Today the HyperGrid Network is by far the largest teleport network in the entire Metaverse, including the largest teleport networks in SecondLife (tm). In fact, today the HyperGate Network is larger than the two largest Secondlife (tm) teleport networks combined. ( http://www.alpha-fox.com/about/ & http://opengate.ma8p.com/list.cgi )
 
 
 
