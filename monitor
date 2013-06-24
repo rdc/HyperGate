@@ -1,0 +1,110 @@
+//
+// Copyright 2009-2013 Zvi ben Yaakov (a.k.a rdc) <hypergate.src@infosoc.net> http://TheHyperGates.com
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+// HyperGate Version 0.7.3
+
+
+string  SOFTWARE_REV = "v0.7.3";
+
+
+// http<->db related vars
+string protocol = "http";
+string topLevel = "com";
+string URL ;
+string secondLevel = "rollin";
+string thirdLevel = "basekix";
+key    initNodeid;                               // http request id
+
+
+initializeStrings(){
+
+    URL = protocol + "://" + thirdLevel + "." + secondLevel + "." + topLevel + "/"; // getHGData url
+
+}
+
+
+
+init(){
+
+    // Grab Parcel Info
+    list lstParcelDetails = llGetParcelDetails(llGetPos(), [PARCEL_DETAILS_NAME, PARCEL_DETAILS_DESC, PARCEL_DETAILS_OWNER, PARCEL_DETAILS_GROUP, PARCEL_DETAILS_AREA]);
+
+    // Set Parcel Variables
+    string ParcelName = llList2String(lstParcelDetails, 0);     // Parcel's Name (63 Characters Max)
+    string ParcelDesc = llList2String(lstParcelDetails, 1);     // Parcels Description (127 Characters Max)
+    key ParcelOwner = llList2Key(lstParcelDetails, 2);          // Parcel Owners Key (AV Or Group Key If Group Owned)
+    key ParcelGroup = llList2Key(lstParcelDetails, 3);          // Parcel's Group Key (NULL_KEY Unless Group Set Or Owned By Group)
+    integer ParcelArea = llList2Integer(lstParcelDetails, 4);   // Parcel's Size (In Meters Squared. ie: 512, 1024...)
+
+
+    //initialize HG network node
+    initNodeid = llHTTPRequest( URL + "initNode/" + llGetSimulatorHostname()
+        + "&pos=" + (string)llGetPos()
+        + "&v=" + SOFTWARE_REV
+        + "&pn=" + ParcelName
+        + "&pd=" + ParcelDesc
+        + "&po=" + (string)ParcelOwner
+        + "&pg=" + (string)ParcelGroup
+        + "&pa=" + (string)ParcelArea
+        //        + "&=" +
+        //        + "&=" +
+        //        + "&=" +
+        , [], "" );
+
+}
+
+check_in(){
+
+    //initialize HG network node
+    // fix: the &pos= param should only be checked and sent when there has been a change in location ("changed" event?)
+    initNodeid = llHTTPRequest( URL + "checkIn/ping"  + "&pos=" + (string)llGetPos() , [], "" );
+
+}
+
+default
+{
+    state_entry()
+    {
+ 
+        initializeStrings();
+        llSetTimerEvent(60.0);
+        init();
+    }
+
+    touch_start(integer _det) {
+
+
+    }
+
+    timer(){
+        check_in();
+    }
+
+
+
+
+
+    on_rez(integer start_param) {
+        // every time we're rezzed, reset the script
+        // this ensures that if we're transferred to a new owner, we're listening to them and not still to the previous one
+        llResetScript();
+
+
+    }
+
+
+}
+

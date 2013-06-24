@@ -1,0 +1,1983 @@
+//
+// Copyright 2009-2013 Zvi ben Yaakov (a.k.a rdc) <hypergate.src@infosoc.net> http://TheHyperGates.com
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+// HyperGate Version 0.7.3
+
+
+
+/////////////// begin shared display functions ////////
+
+integer debugTags = 0;
+
+string moduleDisplayName = "Menu Module";
+string displayStatus = "";
+
+publishDisplay(string status){
+
+    if(!( status == "")){
+        displayStatus = status;
+    }
+    if(!( displayStatus == "")){
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + moduleDisplayName + "|" + displayStatus , NULL_KEY);
+
+    }
+}
+
+publishSimpleDisplay(string status){
+
+    if(!( status == "")){
+        displayStatus = status;
+    }
+    if(!( displayStatus == "")){
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + displayStatus , NULL_KEY);
+
+    }
+}
+
+publishDebug(string status){
+
+    if(!( status == "")){
+        //        displayStatus = status;
+    }
+    llMessageLinked(LINK_SET, 0, "##debug##updateSetDebug##" + moduleDisplayName + "##" + llDumpList2String(initDisplayData, "|") , NULL_KEY);
+
+}
+
+
+
+/////////////// begin  display related functions ////////
+
+// Returns number of Strides in a List
+
+integer fncStrideCount(list lstSource, integer intStride)
+{
+    return llGetListLength(lstSource) / intStride;
+}
+
+
+// Find a Stride within a List (returns stride index, and item subindex)
+list fncFindStride(list lstSource, list lstItem, integer intStride)
+{
+    integer intListIndex = llListFindList(lstSource, lstItem);
+
+    if (intListIndex == -1) { return [-1, -1]; }
+
+    integer intStrideIndex = intListIndex / intStride;
+    integer intSubIndex = intListIndex % intStride;
+
+    return [intStrideIndex, intSubIndex];
+}
+
+// Replace a Stride in a List
+list fncReplaceStride(list lstSource, list lstStride, integer intIndex, integer intStride)
+{
+    integer intNumStrides = fncStrideCount(lstSource, intStride);
+
+    if (llGetListLength(lstStride) != intStride) { return lstSource; }
+
+    if (intNumStrides != 0 && intIndex < intNumStrides)
+    {
+        integer intOffset = intIndex * intStride;
+        return llListReplaceList(lstSource, lstStride, intOffset, intOffset + (intStride - 1));
+    }
+    return lstSource;
+}
+
+
+list initDisplayData = [];
+integer displayStrideLength = 2;
+
+list checkExistingDisplays(string displayName){
+
+
+    return fncFindStride(initDisplayData, [displayName], displayStrideLength);
+
+}
+
+ownerSayTag(string data){
+
+    if(debugTags == 1){
+        llOwnerSay("(" + moduleDisplayName +  ")" + data);
+    }
+
+}
+
+
+addInitDisplayData(string displayName, string displayStatus){
+
+    initDisplayData += [displayName]; // name displayed on left
+    initDisplayData += [displayStatus]; // status displayed on right
+
+}
+
+
+updateInitDisplayData(list initData, integer displayIndex){
+
+
+    initDisplayData = fncReplaceStride(initDisplayData, initData, displayIndex, displayStrideLength);
+
+}
+
+
+refreshInitDisplayData(list initData){
+
+    string displayName = "";
+    string displayStatus = "";
+
+    // this block copies Init data into strings that you can use
+    displayName = llList2String(initData, 0);
+    displayStatus = llList2String(initData, 1);
+
+
+    list displayExists = checkExistingDisplays(displayName);
+    integer displayIndex = llList2Integer(displayExists, 0);
+
+
+    if(displayIndex == -1  )  {
+
+        addInitDisplayData(displayName, displayStatus);
+
+    } else {
+
+            updateInitDisplayData(initData, displayIndex);
+
+    }
+
+
+}
+
+
+updateSetDebug(string data){
+
+    //ownerSayTag("inside: updateSetText");
+
+
+    list initData = llParseString2List(data, ["|"], []);
+
+    refreshInitDisplayData(initData);
+
+    //        string displayText = "";
+    //        integer displayStrideCount = 0;
+
+    //        while( displayStrideCount < (llGetListLength(initDisplayData) / displayStrideLength )){
+
+
+
+    //                displayText +=  llList2String(initDisplayData, (displayStrideCount * displayStrideLength) ) + " : " + llList2String(initDisplayData, ((displayStrideCount * displayStrideLength) + 1) ) + "\n";
+
+    //            displayStrideCount++;
+    //        }
+
+
+    //        llSetText(displayText,<1.0,1.0,1.0>,1.0);
+
+    //ownerSayTag("leaving: updateSetText");
+
+    //return 0;
+
+}
+
+
+
+
+
+/////////////// end shared display functions ////////
+
+
+
+
+
+
+
+
+/////////////// BEGIN LibraryStridedLists //////////////////
+
+// Strided Functions For working with Strided Lists.
+// By Aakanaar LaSalle
+
+// the intStride parameter is the length of the strides within the list
+// the intIndex is which stride we're working with.
+// the intSubIndex is which element of the stride we're working with.
+
+
+// Deletes a Stride from a List
+list fncDeleteStride(list lstSource, integer intIndex, integer intStride)
+{
+    integer intNumStrides = fncStrideCount(lstSource, intStride);
+
+    if (intNumStrides != 0 && intIndex < intNumStrides)
+    {
+        integer intOffset = intIndex * intStride;
+        return llDeleteSubList(lstSource, intOffset, intOffset + (intStride - 1));
+    }
+    return lstSource;
+}
+
+// Returns a Stride from a List
+list fncGetStride(list lstSource, integer intIndex, integer intStride)
+{
+    integer intNumStrides = fncStrideCount(lstSource, intStride);
+
+    if (intNumStrides != 0 && intIndex < intNumStrides)
+    {
+        integer intOffset = intIndex * intStride;
+        return llList2List(lstSource, intOffset, intOffset + (intStride - 1));
+    }
+    return [];
+}
+
+
+// Retrieve a single element from a Stride within a List
+list fncGetElement(list lstSource, integer intIndex, integer intSubIndex, integer intStride)
+{
+    if (intSubIndex >= intStride) { return []; }
+
+    integer intNumStrides = fncStrideCount(lstSource, intStride);
+
+    if (intNumStrides != 0 && intIndex < intNumStrides)
+    {
+        integer intOffset = (intIndex * intStride) + intSubIndex;
+        return llList2List(lstSource, intOffset, intOffset);
+    }
+    return [];
+}
+
+// Update a single item in a Stride within a List
+list fncReplaceElement(list lstSource, list lstItem, integer intIndex, integer intSubIndex, integer intStride)
+{
+    integer intNumStrides = fncStrideCount(lstSource, intStride);
+
+    if (llGetListLength(lstItem) != 1) { return lstSource; }
+
+    if (intNumStrides != 0 && intIndex < intNumStrides)
+    {
+        integer intOffset = (intIndex * intStride) + intSubIndex;
+        return llListReplaceList(lstSource, lstItem, intOffset, intOffset);
+    }
+    return lstSource;
+}
+
+// Retrieve a single element from all strides within a list
+list fncGetElementFromAllStrides(list lstSource, integer intSubIndex, integer intStride)
+{
+    if (intSubIndex >= intStride) { return []; }
+
+    integer intNumStrides = llGetListLength(lstSource) / intStride;
+    list lstRetVal = [];
+    if (intNumStrides != 0)
+    {
+        integer x;
+        integer intOffset;
+        for (x = 0; x < intNumStrides; x++)
+        {
+            intOffset = (x * intStride) + intSubIndex;
+            lstRetVal += llList2List(lstSource, intOffset, intOffset);
+        }
+    }
+    return lstRetVal;
+}
+
+/////////////// END   LibraryStridedLists //////////////////
+
+
+
+
+//None of these parameters need to be changed or set
+
+
+
+
+
+//main menu related
+list mainDiaHandle;
+list mainDiaAvatar;
+
+
+
+list menuMap = [];
+list menuConfig = [];
+list menuConfigStride = [];
+list menuLabel = [];
+list menuBranch = [];
+list menuActionType = [];
+list menuAction = [];
+list menuTitle = [];
+
+integer menuConfigStrideLength = 5;
+
+
+list mainMenuTypes = [];
+list mainMenuTypesAdmin = [];
+integer mainDiaCh = 0;
+
+
+//sub menu related
+integer subDiaCh = 0;
+list subMenuTypes = [];
+
+
+list subDiaAvatar;
+list subDiaDestType;
+list subDiaHandle;
+//list subDiaAction;
+list subDiaMenuChoice;
+//list subDiaListChoice;
+
+
+
+
+
+
+
+integer menuSet = 0;
+integer destinationSet = 0;
+
+
+
+// http<->db related vars
+string protocol = "http";
+string thirdLevel = "basekix";
+string secondLevel = "rollin";
+string topLevel = "com";
+string URL ;
+string HGid  = "";           // HyperGrid ID
+
+
+initializeStrings(){
+
+    URL = protocol + "://" + thirdLevel + "." + secondLevel + "." + topLevel + "/"; // getHGData url
+
+}
+
+
+initializeChannels(){
+
+    mainDiaCh = (integer)llFrand(6000.0)-29000;
+    llMessageLinked(LINK_SET, mainDiaCh, "##settings##setMainDiaCh##", NULL_KEY);
+
+    subDiaCh = (integer)llFrand(6000.0)-29000;
+    llMessageLinked(LINK_SET, subDiaCh, "##settings##setSubDiaCh##", NULL_KEY);
+
+}
+
+
+
+
+
+
+//Compact function to put buttons in "correct" human-readable order ~ Redux
+list delete_this_order_buttons(list buttons)
+{
+
+    while(llGetListLength(buttons) < 3){
+        buttons += " ";
+    }
+
+    while(llGetListLength(buttons) < 6){
+        buttons += " ";
+    }
+
+    while(llGetListLength(buttons) < 12){
+        buttons += " ";
+    }
+
+    return llList2List(buttons, -3, -1) + llList2List(buttons, -6, -4) + llList2List(buttons, -9, -7) + llList2List(buttons, -12, -10);
+}
+
+//Compact function to put buttons in "correct" human-readable order ~ Redux
+list order_destination_buttons(list buttons)
+{
+
+    if(llGetListLength(buttons) < 12){
+
+        while(llGetListLength(buttons) < 3){
+            buttons += " ";
+        }
+
+        while(llGetListLength(buttons) < 6){
+            buttons += " ";
+        }
+
+        while(llGetListLength(buttons) < 12){
+            buttons += " ";
+        }
+
+    } else {
+
+            buttons = llListReplaceList(buttons, ["More >>>"], 11, 11);
+
+    }
+
+
+    return llList2List(buttons, -3, -1) + llList2List(buttons, -6, -4) + llList2List(buttons, -9, -7) + llList2List(buttons, -12, -10);
+}
+
+
+
+/////////////// begin dial menu functions ////////
+
+
+list loadDialMenuChans(string this_dest_type){
+
+    if(this_dest_type == "BasicGrid"){
+
+        return fncGetElementFromAllStrides(stridedBasicMenus, 1, menuStrideLength);
+
+    }
+
+    if(this_dest_type == "HyperGrid"){
+
+        return fncGetElementFromAllStrides(stridedHyperMenus, 1, menuStrideLength);
+    }
+
+    return [];
+}
+
+
+list loadDialMenuNames(string this_dest_type){
+
+    if(this_dest_type == "BasicGrid"){
+
+        return fncGetElementFromAllStrides(stridedBasicMenus, 0, menuStrideLength);
+
+    }
+
+    if(this_dest_type == "HyperGrid"){
+
+        return fncGetElementFromAllStrides(stridedHyperMenus, 0, menuStrideLength);
+    }
+
+    return [];
+}
+
+list loadStrideNames(string this_dest_type){
+
+    if(this_dest_type == "BasicGrid"){
+
+        return fncGetElementFromAllStrides(stridedBasicDestinations, 0, stridedDestinationsStrideLength);
+
+    }
+
+    if(this_dest_type == "HyperGrid"){
+
+        return fncGetElementFromAllStrides(stridedHyperDestinations, 0, stridedDestinationsStrideLength);
+    }
+
+    return [];
+}
+
+
+integer scanChannels(string this_dest_type, key _id, string data, integer _ch, integer chanCounter, list allSubMenuChans){
+
+    integer chanMatched = 0;
+    integer thisChan = 0;
+
+    thisChan = llList2Integer(allSubMenuChans, chanCounter);
+
+    if(thisChan != 0){
+
+        ownerSayTag("_ch: " + (string)_ch + "::" + "thisChan: " + (string)thisChan);
+        if(_ch == thisChan) {
+
+            updateSetDebug("AV ID|" + (string)_id);
+            updateSetDebug("Destination|" + data);
+            updateSetDebug("Channel|" + (string)_ch);
+            updateSetDebug("Dest Type|" + this_dest_type);
+            publishDebug("");
+            publishSimpleDisplay("Destination|" + data);
+            publishSimpleDisplay("Dest Type|" + this_dest_type);
+
+            string strideName = "";
+
+            list allSubMenuNames = [];
+
+            allSubMenuNames = loadDialMenuNames(this_dest_type);
+
+            strideName = llList2String(allSubMenuNames, chanCounter);
+
+            chanMatched = 1;
+
+            // this seems to cross-connect the buttons
+            //        list allStrideNames = [];
+
+            allStrideNames = loadStrideNames(this_dest_type);
+            llMessageLinked(LINK_SET, 0, "##settings##setAllStrideNames##" + llDumpList2String(allStrideNames,"|"), _id);
+
+            //        prepareAgentTransfer(this_dest_type, _id, strideName, data);
+            llMessageLinked(LINK_SET, 0, "##dial##prepareAgentTransfer##" + this_dest_type + "##" + strideName + "##" + data, _id);
+
+        }
+    }
+
+    return chanMatched;
+}
+
+
+
+processDialMenuSelection(key _id, string data, integer _ch){
+
+    ownerSayTag("processDialMenuSelection >>>");
+    //ownerSayTag("(processDialMenuSelection) _id: " + _id);
+    //ownerSayTag("(processDialMenuSelection) data: " + data);
+    //ownerSayTag("(processDialMenuSelection) _ch:" + _ch);
+
+    integer avndx = llListFindList( subDiaAvatar,[_id]);
+    //ownerSayTag("(processDialMenuSelection) avndx:" + avndx);
+    updateSetDebug("AV index|" +(string) avndx);
+    publishDebug("");
+
+
+    // check to see if ANY AVs have been assigned a listener for selecting dial destination
+    // if not, then skip the rest of this function
+    // maybe there is a more elegant way of doing this ... not sure
+    if(avndx > -1){
+
+        string this_dest_type = llList2String( subDiaDestType,avndx);
+        //ownerSayTag("(processDialMenuSelection) this_dest_type:" + this_dest_type);
+
+
+
+        integer chanMatched = 0;
+        integer chanCounter = 0;
+
+        list allSubMenuChans = [];
+
+        allSubMenuChans = loadDialMenuChans(this_dest_type);
+
+
+        if(this_dest_type == "BasicGrid"){
+
+            while(chanMatched == 0 && (chanCounter < llGetListLength(stridedBasicMenus))){
+                chanMatched = scanChannels(this_dest_type, _id, data, _ch, chanCounter, allSubMenuChans);
+                chanCounter++;
+            }
+
+        }
+
+        if(this_dest_type == "HyperGrid"){
+
+            while(chanMatched == 0 && (chanCounter < llGetListLength(stridedHyperMenus))){
+                chanMatched = scanChannels(this_dest_type, _id, data, _ch, chanCounter, allSubMenuChans);
+                chanCounter++;
+            }
+
+        }
+
+    }
+
+    ownerSayTag("<<< processDialMenuSelection ");
+
+
+}
+
+
+
+/////////////// end dial menu functions ////////
+
+
+/////////////// begin http response processor functions ////////
+
+
+
+// Hyper Grid destination vars
+string HyperGridGateKey = "";
+string HyperGridRegionIP = "";
+string HyperGridRegionName = "";
+string HyperGridLandName = "";
+string HyperGridHoverName = "";
+vector HyperGridLandingPoint;
+vector HyperGridLookAt;
+
+
+// Basic Grid destination vars
+string BasicGridGateKey = "";
+string BasicGridRegionIP = "";
+string BasicGridRegionName = "";
+string BasicGridLandName = "";
+string BasicGridHoverName = "";
+vector BasicGridLandingPoint;
+vector BasicGridLookAt;
+
+parseGenHyperGridRegionData(list currentRegionData, string type){
+
+
+    ownerSayTag("parseGenHyperGridRegionData >>>");
+
+
+    // this block copies Region data into strings that you can use to create the Menu
+    HyperGridRegionIP = llList2String(currentRegionData, 1);
+    HyperGridRegionName = llList2String(currentRegionData, 0);
+    HyperGridLandName = llList2String(currentRegionData, 2);
+    HyperGridHoverName = llList2String(currentRegionData, 3);
+    HyperGridLandingPoint = (vector)llList2String([llList2String(currentRegionData, 4)], 0);
+    HyperGridLookAt = (vector)llList2String([llList2String(currentRegionData, 5)], 0);
+    HyperGridGateKey = llList2String(currentRegionData, 6);
+
+    ownerSayTag("HyperGridRegionName: " + HyperGridRegionName);
+
+
+    stridedHyperDestinations += [type]; // strideName
+    stridedHyperDestinations += [HyperGridGateKey]; // gateKey
+    stridedHyperDestinations += [HyperGridRegionName]; // destination
+    stridedHyperDestinations += [HyperGridRegionIP]; // region
+    stridedHyperDestinations += [HyperGridLandingPoint]; // coord
+    stridedHyperDestinations += [HyperGridLookAt]; // lookAt
+
+    ownerSayTag("<<< parseGenHyperGridRegionData");
+
+
+}
+
+
+parseGenHyperGridRegionList(string body, string  type){
+
+    list regionList = llParseString2List(body, ["##"], [""]);
+    integer regionCount = llGetListLength(regionList) ;
+    integer counter;
+
+    stridedHyperDestinations = [];
+
+    for(counter = 1; counter < regionCount; counter++){
+
+        string currentRegionString = llList2String(regionList, counter);
+        list currentRegionData = llParseString2List(currentRegionString, ["|"], [""]);
+        parseGenHyperGridRegionData(currentRegionData, type);
+
+    }
+
+    string destinationNamesString = llDumpList2String(stridedHyperDestinations,"|");
+    ownerSayTag("stridedHyperDestinations: [" + destinationNamesString + "]");
+
+
+
+
+    llMessageLinked(LINK_SET, 0, "##settings##setStridedHyperDestinations##" + llDumpList2String(stridedHyperDestinations,"|"), NULL_KEY);
+
+}
+
+parseGenBasicGridRegionData(list currentRegionData, string type){
+
+    ownerSayTag("parseGenBasicGridRegionData >>>");
+
+    // this block copies Region data into strings that you can use to create the Menu
+    BasicGridRegionIP = llList2String(currentRegionData, 1);
+    //        BasicGridRegionName = llList2String(currentRegionData, 0);
+    //        BasicGridLandName = llList2String(currentRegionData, 2);
+    //        BasicGridHoverName = llList2String(currentRegionData, 3);
+    BasicGridLandingPoint = (vector)llList2String([llList2String(currentRegionData, 4)], 0);
+    BasicGridLookAt = (vector)llList2String([llList2String(currentRegionData, 5)], 0);
+    //        BasicGridLandingPoint = (vector)llList2String([llList2String(currentRegionData, 2)], 0);
+    //        BasicGridLookAt = (vector)llList2String([llList2String(currentRegionData, 3)], 0);
+    BasicGridGateKey = llList2String(currentRegionData, 6);
+
+    list currentRegionName;
+    currentRegionName = llParseString2List(llList2String(currentRegionData, 0), [" ("], []);
+    BasicGridRegionName = llList2String(currentRegionName, 0);
+
+    ownerSayTag("BasicGridRegionName: " + BasicGridRegionName);
+
+    stridedBasicDestinations += [type]; // strideName
+    stridedBasicDestinations += [BasicGridGateKey]; // gateKey
+    stridedBasicDestinations += [BasicGridRegionName]; // destination
+    stridedBasicDestinations += [BasicGridRegionName]; // region
+    stridedBasicDestinations += [BasicGridLandingPoint]; // coord
+    stridedBasicDestinations += [BasicGridLookAt]; // lookAt
+
+
+
+
+    ownerSayTag("<<< parseGenBasicGridRegionData");
+
+
+
+}
+
+parseGenBasicGridRegionList(string body, string type){
+
+    list regionList = llParseString2List(body, ["##"], [""]);
+    integer regionCount = llGetListLength(regionList) ;
+    integer counter;
+
+    stridedBasicDestinations = [];
+
+    for(counter = 1; counter < regionCount; counter++){
+
+        string currentRegionString = llList2String(regionList, counter);
+        list currentRegionData = llParseString2List(currentRegionString, ["|"], [""]);
+        parseGenBasicGridRegionData(currentRegionData, type);
+
+    }
+
+    string destinationNamesString = llDumpList2String(stridedBasicDestinations,"|");
+    ownerSayTag("stridedBasicDestinations: [" + destinationNamesString + "]");
+
+
+    llMessageLinked(LINK_SET, 0, "##settings##setStridedBasicDestinations##" + llDumpList2String(stridedBasicDestinations,"|"), NULL_KEY);
+
+}
+
+
+
+processHttpResponse(key id, integer status, list meta, string body) {
+
+    integer idMatched = 0;
+    //    integer strideCount = 0;
+    integer strideBasicCount = 0;
+    integer strideHyperCount = 0;
+
+    list hyperHttpIDs = fncGetElementFromAllStrides(stridedHyperMenus, 3, menuStrideLength);
+    list hyperHttpUUIDs = fncGetElementFromAllStrides(stridedHyperMenus, 4, menuStrideLength);
+    list basicHttpIDs = fncGetElementFromAllStrides(stridedBasicMenus, 3, menuStrideLength);
+    list basicHttpUUIDs = fncGetElementFromAllStrides(stridedBasicMenus, 4, menuStrideLength);
+
+    string strideName = "";
+    strideHyperCount = 0;
+
+    integer avndx = llListFindList( subDiaAvatar,[id]);
+    string menuChoice = "";
+
+    key userID ;
+
+    while( idMatched == 0 && (strideHyperCount < llGetListLength(hyperHttpIDs))){
+
+        if ( id ==  llList2Key(hyperHttpIDs, strideHyperCount) ) {
+
+            userID = llList2String(hyperHttpUUIDs, strideHyperCount);
+            idMatched = 1;
+
+            menuChoice = llList2String(subDiaMenuChoice, avndx);
+            strideName = menuChoice;
+            //strideCount = 0;
+
+            if ( status == 499 )
+                ownerSayTag("request timed out for: " + "hyper::" +  strideName + " ");
+            else if ( status != 200 )
+                ownerSayTag("while requesting " + "hyper::" +  strideName + "u data, the internet exploded!!");
+            else if ( (key)body == NULL_KEY )
+                ownerSayTag("No data found for " + "hyper::" +  strideName + " menu");
+            else
+                parseGenHyperGridRegionList(body, strideName);
+
+
+        }
+
+        strideHyperCount++;
+
+
+    }
+
+
+    strideBasicCount = 0;
+
+    while( idMatched == 0 && (strideBasicCount < llGetListLength(basicHttpIDs))){
+
+        if ( id ==  llList2Key(basicHttpIDs, strideBasicCount) ) {
+
+            userID = llList2String(basicHttpUUIDs, strideBasicCount);
+            idMatched = 1;
+
+            menuChoice = llList2String(subDiaMenuChoice, avndx);
+            strideName = menuChoice;
+
+            if ( status == 499 )
+                ownerSayTag("request timed out for: " + "hyper::" +  strideName + " ");
+            else if ( status != 200 )
+                ownerSayTag("while requesting " + "hyper::" +  strideName + "u data, the internet exploded!!");
+            else if ( (key)body == NULL_KEY )
+                ownerSayTag("No data found for " + "hyper::" +  strideName + " menu");
+            else
+                parseGenBasicGridRegionList(body, strideName);
+
+
+        }
+
+        strideBasicCount++;
+
+
+    }
+    if(idMatched == 1){
+        //   processListMenuSelection( id, body);
+        processListMenuSelection( userID, body);
+    }
+
+    if(idMatched == 0)
+        return;
+
+}
+
+
+/////////////// end http response processor functions ////////
+
+
+
+
+///////////////// begin destination menu functions //////////
+
+
+
+
+
+// strided menu format
+// [ string strideName, integer diaCh, string menuText, key menuID ]
+list stridedHyperMenus = [];
+list stridedBasicMenus = [];
+integer menuStrideLength = 5;
+
+
+
+
+
+
+
+
+/////////////////// end destination menu functions /////////////
+
+
+
+/////////////// begin list menu functions ////////
+
+list allStrideNames = [];
+
+
+// strided menu format
+// [ string strideName, integer diaCh, string menuText, key menuID ]
+//list stridedHyperMenus = [];
+//list stridedBasicMenus = [];
+//integer menuStrideLength = 4;
+
+list destinationStrideNames = [];
+list destinationStrideDests = [];
+
+
+
+// strided destination format
+// [ string strideName, string gateKey, string destination, string region, vector coord, vector lookAt ]
+list stridedHyperDestinations = [];
+list stridedBasicDestinations = [];
+integer stridedDestinationsStrideLength = 6;
+
+
+
+list stridedDiaData = [];
+
+
+setStridedBasicDestinations(string data){
+
+    stridedBasicDestinations = llParseString2List(data, ["|"], []);
+
+}
+
+setStridedHyperDestinations(string data){
+
+    stridedHyperDestinations = llParseString2List(data, ["|"], []);
+
+}
+
+
+setStridedBasicMenus(string data){
+
+    stridedBasicMenus = llParseString2List(data, ["|"], []);
+
+}
+
+setStridedHyperMenus(string data){
+
+    stridedHyperMenus = llParseString2List(data, ["|"], []);
+
+}
+
+prepareDestinationData(key _id, string data){
+
+    ownerSayTag("prepareDestinationData >>>");
+    ownerSayTag("data: " + data);
+
+    integer avndx = llListFindList( subDiaAvatar,[_id]);
+    string this_dest_type = llList2String( subDiaDestType,avndx);
+
+
+    if(this_dest_type == "BasicGrid"){
+
+        llMessageLinked(LINK_SET, 0, "##settings##getStridedBasicDestinations##", _id);
+
+        allStrideNames = fncGetElementFromAllStrides(stridedBasicMenus, 0, menuStrideLength);
+        destinationStrideNames = fncGetElementFromAllStrides(stridedBasicDestinations, 0, 6);
+        destinationStrideDests = fncGetElementFromAllStrides(stridedBasicDestinations, 2, 6);
+
+    }
+
+    if(this_dest_type == "HyperGrid"){
+
+        llMessageLinked(LINK_SET, 0, "##settings##getStridedHyperDestinations##", _id);
+
+        allStrideNames = fncGetElementFromAllStrides(stridedHyperMenus, 0, menuStrideLength);
+        destinationStrideNames = fncGetElementFromAllStrides(stridedHyperDestinations, 0, 6);
+        destinationStrideDests = fncGetElementFromAllStrides(stridedHyperDestinations, 2, 6);
+
+    }
+
+    string strideNamesString = llDumpList2String(allStrideNames,"|");
+    ownerSayTag("allStrideNames: [" + strideNamesString + "]");
+
+    string destinationNamesString = llDumpList2String(destinationStrideNames,"|");
+    ownerSayTag("destinationStrideNames: [" + destinationNamesString + "]");
+
+    string destinationDestsString = llDumpList2String(destinationStrideDests,"|");
+    ownerSayTag("destinationStrideDests: [" + destinationDestsString + "]");
+
+    llMessageLinked(LINK_SET, 0, "##settings##setAllStrideNames##" + strideNamesString, _id);
+
+    ownerSayTag("<<< prepareDestinationData");
+
+}
+
+createDestinationButtons(key _id, string data){
+
+    ownerSayTag("createDestinationButtons >>>");
+
+
+    integer avndx = llListFindList( subDiaAvatar,[_id]);
+    string this_dest_type = llList2String( subDiaDestType,avndx);
+
+    string menuChoice = llList2String(subDiaMenuChoice, avndx);
+    ownerSayTag("menuChoice: " + menuChoice);
+    string menuChoiceSmall = llToLower(menuChoice);
+    integer dataMatched = 0;
+    integer strideCount = 0;
+    integer diaCh = 0;
+    string menuText = "";
+
+    string strideName = "";
+    string strideNameSmall = "";
+    list menuStride = [];
+
+    integer destStrideCount = 0;
+    list thisButtonList = [];
+    string thisButtonName = "";
+
+    ownerSayTag("menuStrideLength: [" + (string)menuStrideLength + "]");
+
+    while( dataMatched == 0 && (strideCount < menuStrideLength)){
+
+        strideName = llList2String(allStrideNames, strideCount);
+        strideNameSmall =  llToLower(strideName) ;
+        //        if ( data ==  strideName ) {
+        ownerSayTag("select choice: [" + menuChoiceSmall + "][" + strideNameSmall + "]");
+        if ( menuChoice == strideNameSmall) {
+            ownerSayTag("this_dest_type: [" + this_dest_type + "]");
+            if(this_dest_type == "BasicGrid"){
+
+                menuStride = fncGetStride(stridedBasicMenus, strideCount, menuStrideLength);
+
+            }
+
+            if(this_dest_type == "HyperGrid"){
+
+                menuStride = fncGetStride(stridedHyperMenus, strideCount, menuStrideLength);
+
+            }
+
+            ownerSayTag("menuStride: [" + llDumpList2String(menuStride,"|"));
+
+            diaCh = llList2Integer(menuStride, 1);
+            menuText = llList2String(menuStride, 2);
+            ownerSayTag("diaCh: [" + (string)diaCh + "]");
+            ownerSayTag("menuText: [" + menuText + "]");
+            list diaExists = fncFindStride( stridedDiaData,[_id],4);
+            if( llList2Integer(diaExists, 0) > -1 ){
+                ownerSayTag("id: REGISTERED");
+
+                list tempDiaData = [ llListen(diaCh,"",_id,""), _id, strideName, this_dest_type ];
+                integer tempStride = llList2Integer(diaExists, 0);
+                stridedDiaData = fncReplaceStride(stridedDiaData, tempDiaData, tempStride, 4);
+            } else {
+                    ownerSayTag("id: NOT Registered");
+                stridedDiaData += [ llListen(diaCh,"",_id,""), _id, strideName, this_dest_type ];
+
+            }
+
+            destStrideCount = 0;
+            thisButtonList = [];
+            thisButtonName = "";
+
+            while(destStrideCount < llGetListLength(destinationStrideNames)){
+                ownerSayTag("Button match: [" + strideNameSmall + "][" + llList2String(destinationStrideNames, destStrideCount) + "]");
+
+                if(llList2String(destinationStrideNames, destStrideCount) == strideNameSmall){
+                    thisButtonName = llList2String(destinationStrideDests, destStrideCount);
+                    thisButtonList += [thisButtonName];
+                }
+                destStrideCount++;
+            }
+
+            ownerSayTag("thisButtonList: [" + llDumpList2String(thisButtonList,"|"));
+
+            ownerSayTag("_id: "+ (string)_id);
+
+            dataMatched = 1;
+
+            //llOwnerSay("dialob 0");
+            llDialog(_id,menuText,order_destination_buttons(thisButtonList),diaCh);
+
+        }
+
+        strideCount++;
+
+    }
+
+    llMessageLinked(LINK_SET, 0, "##settings##setStridedDiaData##" + llDumpList2String(stridedDiaData,"|"), _id);
+
+    ownerSayTag("<<< createDestinationButtons");
+
+
+
+}
+
+
+processListMenuSelection(key _id, string data){
+
+    //    list stridedMenus = [];
+
+    data = llToLower(data);
+
+    prepareDestinationData( _id, data);
+    createDestinationButtons( _id, data);
+
+}
+
+
+/////////////// end list menu functions ////////
+
+
+
+
+/////////////// begin sub menu functions ////////
+
+updateMenuParams(key _id, string data, integer menuChan, integer dialIndex){
+
+
+    //    subDiaHandle = llListReplaceList(subDiaHandle,llListen(menuChan,"",_id,""), dialIndex, dialIndex);
+
+    subDiaHandle = llDeleteSubList(subDiaHandle, dialIndex, dialIndex);
+    subDiaAvatar = llDeleteSubList(subDiaAvatar, dialIndex, dialIndex);
+    subDiaHandle += llListen(menuChan,"",_id,"");
+    subDiaAvatar += _id;
+
+
+    integer avndx = 0;
+    avndx = llListFindList( subDiaAvatar,[_id]);
+    if (data == "HyperGrid"){
+
+        subDiaDestType = llListReplaceList(subDiaDestType, ["HyperGrid"], avndx, avndx);
+
+    }
+
+    if (data == "This Grid"){
+
+        subDiaDestType = llListReplaceList(subDiaDestType, ["BasicGrid"], avndx, avndx);
+
+    }
+
+    ownerSayTag("Updating DestType: " + data);
+
+    llMessageLinked(LINK_SET, 0, "##settings##setSubDiaDestType##" + llDumpList2String(subDiaDestType,"|"), _id);
+
+
+}
+
+initMenuParams(key _id, string data, integer menuChan){
+
+    subDiaHandle += llListen(menuChan,"",_id,"");
+    subDiaAvatar += _id;
+
+    if (data == "HyperGrid"){
+
+        subDiaDestType += ["HyperGrid"];
+
+    }
+
+    if (data == "This Grid"){
+
+        subDiaDestType += ["BasicGrid"];
+
+    }
+
+    ownerSayTag("Initializing DestType: " + data);
+
+
+
+    ownerSayTag("Registering Dialing AV: " + llDumpList2String(subDiaAvatar,"|"));
+    llMessageLinked(LINK_SET, 0, "##settings##setSubDiaAvatar##" + llDumpList2String(subDiaAvatar,"|"), _id);
+
+    ownerSayTag("Registering Dial Type: " + llDumpList2String(subDiaDestType,"|"));
+    llMessageLinked(LINK_SET, 0, "##settings##setSubDiaDestType##" + llDumpList2String(subDiaDestType,"|"), _id);
+
+    ownerSayTag("Registering Dial Handle: " + llDumpList2String(subDiaHandle,"|"));
+    llMessageLinked(LINK_SET, 0, "##settings##setSubDiaHandle##" + llDumpList2String(subDiaHandle,"|"), _id);
+
+
+}
+
+
+processMainMenuSelection(key _id, string data, integer menuNumCurr, string currBranch , integer _ch){
+
+    ownerSayTag("Processing Main Menu Selection >>>");
+    ownerSayTag("data: " + data);
+    if(data == "Admin"){
+
+        llMessageLinked(LINK_SET, 0, "##admin##initAdminMenuListen##", _id);
+
+    } else if (data == "More >>>"){
+
+            integer avndx = llListFindList( subDiaAvatar,[_id]);
+        string menuChoice = llList2String(subDiaDestType, avndx) + "/" + llList2String(subDiaMenuChoice, avndx) ;
+
+        llLoadURL(_id, "Go to this web page for the full list of Destinations that you have chosen", "http://TheHyperGates.com/hypergatenetwork/" + menuChoice);
+
+
+    } else {
+
+
+
+
+            string action = "";
+        integer currDiaChan = 0;
+
+
+        string labelsString = llList2String(menuLabel, menuNumCurr);
+        list labelsLoaded = llParseString2List(labelsString, ["|"], []);
+
+        string branchesString = llList2String(menuBranch, menuNumCurr);
+        list branchesPrev = llParseString2List(branchesString, ["|"], []);
+
+        string actionString = llList2String(menuAction, menuNumCurr);
+        list theseAction = llParseString2List(actionString, ["|"], []);
+
+        string actionTypeString = llList2String(menuActionType, menuNumCurr);
+        list theseActionType = llParseString2List(actionTypeString, ["|"], []);
+
+        list menuConfigList = fncGetStride(menuConfigStride, menuNumCurr, menuConfigStrideLength);
+        string menuConfigString = llDumpList2String(menuConfigList,"|");
+        //            list adminMenu = fncGetElementFromAllStrides(menuConfigStride, 1, menuConfigStrideLength);
+        //                integer adminIndex = llListFindList(adminMenu, ["1"]);
+
+        ownerSayTag("menuConfig: " + menuConfigString);
+        ownerSayTag("labelsString: " + labelsString);
+        ownerSayTag("branchesString: " + branchesString);
+        ownerSayTag("actionString: " + actionString);
+        ownerSayTag("actionTypeString: " + actionTypeString);
+
+
+        integer menuLoadedLabelIndex = llListFindList(labelsLoaded, [data]);
+
+
+        ownerSayTag("menu index: " + (string)menuLoadedLabelIndex);
+
+
+        list menuConfigListNext = fncGetStride(menuConfigStride, menuLoadedLabelIndex, menuConfigStrideLength);
+        string menuConfigStringNext = llDumpList2String(menuConfigListNext,"|");
+
+        ownerSayTag("menuConfigNext: " + menuConfigStringNext);
+
+        if(currBranch == "dest"){
+            ownerSayTag("currBranch: DEST");
+
+            ownerSayTag("Entered: DEST");
+            processDialMenuSelection( _id, data, _ch);
+
+            return;
+
+        } else {
+                ownerSayTag("currBranch: GOT IT!!! : " + currBranch);
+
+
+
+
+
+
+            integer thisActionType = llList2Integer(theseActionType, menuLoadedLabelIndex);
+            string thisAction = llList2String(theseAction, menuLoadedLabelIndex);
+
+            //    string thisAction = llList2String(branchesPrev,menuLoadedLabelIndex);
+
+            string realBranch = llList2String(menuConfigList, 2);
+            if(currBranch == ""){
+                ownerSayTag("currBranch: NULL");
+            }else {
+                    ownerSayTag("currBranch: " + currBranch);
+                ownerSayTag("actionType: " + (string)thisActionType);
+                ownerSayTag("action: " + thisAction);
+            }
+
+
+        }
+        string thisBranch = llList2String(branchesPrev,menuLoadedLabelIndex);
+        ownerSayTag("branch: " + thisBranch);
+
+        integer dialIndex = llListFindList( subDiaAvatar,[_id]);
+
+
+        if(currBranch == "multi"){
+            ownerSayTag("Entered: MULTI");
+
+
+
+            if(dialIndex > -1){
+                ownerSayTag("Dailing AV: Found");
+
+                updateMenuParams( _id, data, currDiaChan, dialIndex);
+
+            } else {
+                    ownerSayTag("Dailing AV: Not Found");
+
+                initMenuParams( _id, data, currDiaChan);
+
+            }
+
+            // MOVED processListMenuSelection from List module to Menu module above
+            //
+            //    llMessageLinked(LINK_SET, 0, "##list##processListMenuSelection##" + data, _id);
+            //    llMessageLinked(LINK_SET, 0, "##menu##processListMenuSelection##" + data, _id);
+
+
+            integer menuNum = llListFindList(menuMap, [thisBranch]);
+
+            ownerSayTag("menuNum: " + (string)menuNum);
+
+
+            //                list labels = llParseString2List(llList2String(menuLabel, menuNum), ["|"], []);
+
+            integer avndx = llListFindList( subDiaAvatar,[_id]);
+            string this_dest_type = llList2String( subDiaDestType,avndx);
+            string strideName = llToLower(data);
+
+            subDiaMenuChoice =  llListReplaceList(subDiaMenuChoice, [strideName], avndx, avndx);
+
+            stridedHyperMenus = [];
+            stridedBasicMenus = [];
+
+            ownerSayTag("Menu Name: " + strideName);
+
+            list titleList = fncGetElement(menuConfigStride, menuNum  , 3, menuConfigStrideLength);
+
+            string menuTitle = llList2String(titleList,0);
+            ownerSayTag("menuTitle: " + menuTitle);
+
+
+            currDiaChan = llList2Integer(fncGetElement(menuConfigStride, menuNum, 4, menuConfigStrideLength),0);
+
+            if(this_dest_type == "HyperGrid"){
+
+                stridedHyperMenus += [data]; // strideName
+                stridedHyperMenus += [currDiaChan]; // diaCh
+                stridedHyperMenus += [menuTitle]; // menuText
+                stridedHyperMenus += llHTTPRequest( URL + "gtSttsData/" +
+                    "hyper&typ=" + strideName, [], "" );
+                stridedHyperMenus += [_id]; // key of user
+
+            }
+
+            if(this_dest_type == "BasicGrid"){
+
+                stridedBasicMenus += [data]; // strideName
+                stridedBasicMenus += [currDiaChan]; // diaCh
+                stridedBasicMenus += [menuTitle]; // menuText
+                stridedBasicMenus += llHTTPRequest( URL + "gtSttsData/" +
+                    "basic&typ=" + strideName, [], "" );
+                stridedBasicMenus += [_id]; // key of user
+            }
+
+
+
+
+        } else {
+                ownerSayTag("Entered: NON-MULTI");
+            integer menuNum = llListFindList(menuMap, [thisBranch]);
+
+            ownerSayTag("menuNum: " + (string)menuNum);
+
+
+            list labels = llParseString2List(llList2String(menuLabel, menuNum), ["|"], []);
+
+            list titleList = fncGetElement(menuConfigStride, menuNum  , 3, menuConfigStrideLength);
+
+            string menuTitle = llList2String(titleList,0);
+            ownerSayTag("menuTitle: " + menuTitle);
+
+
+            currDiaChan = llList2Integer(fncGetElement(menuConfigStride, menuNum, 4, menuConfigStrideLength),0);
+            //llOwnerSay("dialob 1");
+
+            llDialog(_id,menuTitle,labels,llList2Integer(fncGetElement(menuConfigStride, menuNum  , 4, menuConfigStrideLength),0));
+
+
+
+            // THIS MAY NOT BE NECCESSARY HERE>>SINCE IT IS ABOVE ALSO
+            if(dialIndex > -1){
+                ownerSayTag("Dailing AV: Found");
+
+                updateMenuParams( _id, data, currDiaChan, dialIndex);
+
+            } else {
+                    ownerSayTag("Dailing AV: Not Found");
+
+                initMenuParams( _id, data, currDiaChan);
+
+            }
+
+        }
+
+
+    }
+
+    ownerSayTag("<<< Processing Main Menu Selection");
+
+
+}
+
+/////////////// end sub menu functions ////////
+
+
+//////// begin debug  ////////
+
+
+debugMenu(integer num){
+
+    integer typeCount = 0 ;
+    string menuName = llList2String(menuMap, num);
+
+    list labels = llParseString2List( llList2String(menuLabel, num), ["|"], []);
+
+    while( typeCount < (llGetListLength(labels) )){
+
+        updateSetDebug("Menu " + menuName + " " + (string)typeCount + "|" + llList2String(labels, typeCount));
+        typeCount++;
+    }
+    publishDebug("");
+
+}
+
+
+//////// end debug  ////////
+
+
+
+
+/// begin settings
+
+
+
+
+setMenuName(string str, integer num)
+{
+    //        llSay(0,"Data recieved: " + str);
+
+    menuMap = llListReplaceList(menuMap, [str], num, num);
+    debugMenu(num);
+
+}
+
+setMenuConfig(string str, integer num)
+{
+    ownerSayTag("setting Menu Config: " + str);
+
+
+    menuConfig = llListReplaceList(menuConfig, [str], num, num);
+    list tempConfig = llParseString2List(str, ["|"], []);
+
+    ownerSayTag("tempConfig: " + llList2String(tempConfig, 3));
+
+    if(fncStrideCount(menuConfigStride, menuConfigStrideLength) < llGetListLength(menuConfig)){
+        menuConfigStride = menuConfigStride + tempConfig;
+    } else {
+            menuConfigStride = fncReplaceStride(menuConfigStride, tempConfig, num, menuConfigStrideLength);
+    }
+    ownerSayTag("menuConfig: " + (string)llGetListLength(menuConfig));
+    ownerSayTag("menuConfigStride: " + (string)llGetListLength(menuConfigStride));
+
+    //    debugMenu(num);
+
+}
+
+setMenuLabels(string str, integer num)
+{
+    //        llSay(0,"Data recieved: " + str);
+
+    menuLabel = llListReplaceList(menuLabel, [str], num, num);
+    //    debugMenu(num);
+
+}
+
+
+setMenuBranches(string str, integer num)
+{
+    //        llSay(0,"Data recieved: " + str);
+
+    menuBranch = llListReplaceList(menuBranch, [str], num, num);
+    //    debugMenu(num);
+
+}
+
+
+setMenuActions(string str, integer num)
+{
+    //        llSay(0,"Data recieved: " + str);
+
+    menuAction = llListReplaceList(menuAction, [str], num, num);
+    //    debugMenu(num);
+
+}
+
+setMenuActionTypes(string str, integer num)
+{
+    //        llSay(0,"Data recieved: " + str);
+
+    menuActionType = llListReplaceList(menuActionType, [str], num, num);
+    //    debugMenu(num);
+
+}
+
+
+
+
+setDestination(integer status){
+    string statusString = "";
+    destinationSet = status;
+    updateSetDebug("Destination Set|" + (string)status );
+    if(status == 0){
+        statusString = "FALSE";
+    } else {
+            statusString = "TRUE";
+    }
+    publishSimpleDisplay("Destination Set|" + statusString);
+
+    publishDebug("");
+
+
+}
+
+setMainDiaCh(integer data){
+    ownerSayTag("Corev: setMainDiaCh: " + (string)data);
+    mainDiaCh = data;
+    updateSetDebug("Chan Main|" + (string)data );
+
+}
+
+getMainDiaCh(){
+
+    if(mainDiaCh != 0){
+        llMessageLinked(LINK_SET, mainDiaCh, "##settings##setMainDiaCh##", NULL_KEY);
+    }
+
+}
+
+
+
+
+
+getDestination(){
+
+    // if(mainDiaCh != 0){
+    llMessageLinked(LINK_SET, destinationSet, "##settings##setDestination##", NULL_KEY);
+    // }
+
+}
+
+
+
+
+getSubDiaCh(){
+
+    if(subDiaCh != 0){
+        llMessageLinked(LINK_SET, subDiaCh, "##settings##setSubDiaCh##", NULL_KEY);
+    }
+
+}
+
+getSubDiaAvatar(){
+
+    if(llGetListLength(subDiaAvatar) > 0){
+        llMessageLinked(LINK_SET, 0, "##settings##setSubDiaAvatar##" + llDumpList2String(subDiaAvatar, "|"), NULL_KEY);
+    }
+
+}
+
+getSubDiaDestType(){
+
+    if(llGetListLength(subDiaDestType) > 0){
+        llMessageLinked(LINK_SET, 0, "##settings##setSubDiaDestType##" + llDumpList2String(subDiaDestType, "|"), NULL_KEY);
+    }
+
+}
+
+getSubDiaHandle(){
+
+    if(llGetListLength(subDiaHandle) > 0){
+        llMessageLinked(LINK_SET, 0, "##settings##setSubDiaHandle##" + llDumpList2String(subDiaHandle, "|"), NULL_KEY);
+    }
+
+}
+
+
+
+
+
+
+/// end settings
+
+
+
+integer listen_menu(integer _ch, string data, key _id){
+
+    ownerSayTag("listen_menu >>>");
+
+    integer menuCount = 0;
+    list chanList = fncGetElementFromAllStrides(menuConfigStride, 4, menuConfigStrideLength);
+    integer currChan = 0;
+
+    integer dialog_heard = 0;
+
+    while( menuCount < (llGetListLength(chanList) )   &&  dialog_heard == 0){
+
+        currChan = llList2Integer(chanList, menuCount);
+        //     currChan = llList2Integer(fncGetElement(menuConfigStride, adminIndex, 4, menuConfigStrideLength),0);
+
+
+
+
+
+        //ownerSayTag("currChan: " + currChan);
+        //ownerSayTag("_ch: " + _ch);
+        ownerSayTag("_ch: " + (string)_ch + "::" + "currChan: " + (string)currChan);
+
+        updateSetDebug("Chan Curr|" + (string)_ch );
+        //ownerSayTag("_id: " + _id);
+
+        if(_ch == currChan ) {
+
+            dialog_heard = 1;
+
+            list thisBranchList = fncGetElement(menuConfigStride, menuCount, 2, menuConfigStrideLength);
+
+            if(llGetListLength(thisBranchList) > 0 ){
+                //llMessageLinked(LINK_SET, _ch, "##main##listen_main##" + data, _id);
+                processMainMenuSelection( _id, data, menuCount, llList2String(thisBranchList,0), _ch);
+
+            } else {
+                    processMainMenuSelection( _id, data, menuCount, "empty", _ch);
+
+            }
+        } else {
+
+                dialog_heard = 0;
+        }
+
+        menuCount++;
+    }
+
+    if(dialog_heard == 0){
+        ownerSayTag("NOT Heard by main menu ");
+
+        //        processDialMenuSelection( _id, data, _ch);
+    } else {
+            ownerSayTag("HEARD by main menu ");
+
+    }
+
+    if(destinationSet == 0){
+
+        //            initializeStridedMenus();
+        //            initializeStridedDestinations();
+    }
+
+    ownerSayTag("<<< listen_menu");
+
+    return dialog_heard;
+
+}
+
+
+
+remote_touch_start(key detectedKey) {
+
+    ownerSayTag("remote_touch_start >>>");
+
+    if(destinationSet == 0){
+
+        //initializeStridedMenus();
+        //initializeStridedDestinations();
+        integer currDiaChan = 0;
+
+        if(detectedKey == llGetOwner()){
+
+            list adminMenu = fncGetElementFromAllStrides(menuConfigStride, 1, menuConfigStrideLength);
+            integer adminIndex = llListFindList(adminMenu, ["1"]);
+
+            //this is to compensate for the blank first menu
+            //adminIndex--;
+
+            ownerSayTag("menuConfigStride: " + (string)llGetListLength(menuConfigStride));
+            ownerSayTag("adminIndex: " + (string)adminIndex);
+            list labels = llParseString2List(llList2String(menuLabel, adminIndex ), ["|"], []);
+
+            currDiaChan = llList2Integer(fncGetElement(menuConfigStride, adminIndex, 4, menuConfigStrideLength),0);
+            ownerSayTag("currDiaChan: " + (string)currDiaChan);
+            //llOwnerSay("dialob 2");
+
+            llDialog(detectedKey,llList2String(fncGetElement(menuConfigStride, adminIndex, 3, menuConfigStrideLength),0),labels,currDiaChan);
+
+        } else {
+
+                list rootMenu = fncGetElementFromAllStrides(menuConfigStride, 0, menuConfigStrideLength);
+            integer rootIndex = llListFindList(rootMenu, ["1"]);
+
+            //this is to compensate for the blank first menu
+            //                rootIndex--;
+
+            ownerSayTag("menuConfigStride: " + (string)llGetListLength(menuConfigStride));
+            ownerSayTag("rootIndex: " + (string)rootIndex);
+            list labels = llParseString2List(llList2String(menuLabel, rootIndex ), ["|"], []);
+
+
+            currDiaChan = llList2Integer(fncGetElement(menuConfigStride, rootIndex, 4, menuConfigStrideLength),0);
+
+            ownerSayTag("currDiaChan: " + (string)currDiaChan);
+
+            llDialog(detectedKey,llList2String(fncGetElement(menuConfigStride, rootIndex, 3, menuConfigStrideLength),0),labels,currDiaChan );
+
+        }
+
+        integer avatarRegged = llListFindList(mainDiaAvatar,[detectedKey]);
+        if(avatarRegged == -1 ){
+            mainDiaHandle += llListen(currDiaChan,"",detectedKey,"");
+            mainDiaAvatar += detectedKey;
+        } else {
+
+                mainDiaHandle = llDeleteSubList(mainDiaHandle, avatarRegged, avatarRegged);
+            mainDiaAvatar = llDeleteSubList(mainDiaAvatar, avatarRegged, avatarRegged);
+
+            mainDiaHandle += llListen(currDiaChan,"",detectedKey,"");
+            mainDiaAvatar += detectedKey;
+
+        }
+
+
+    }
+
+
+
+    ownerSayTag("<<< remote_touch_start");
+
+}
+
+
+
+
+float time = 2; // timer interval
+
+default
+{
+
+    state_entry()
+    {
+
+        publishDisplay("Registering Module");
+        llSetTimerEvent(time); // generate a timer event every 2 seconds
+        llSetText("..:: Welcome to The HyperGates ::..\nTheHyperGates.com\n- - -\nSuccessful " + moduleDisplayName +" Entry",<1.0,1.0,1.0>,1.0);
+
+    }
+
+    timer()
+    {
+        //llOwnerSay("menu:default:timer");
+        //if( (llGetLinkNumber()) > 0 ){
+        llMessageLinked(LINK_ROOT, 0, "##core##loaded##menu", NULL_KEY);
+        //}
+        llSetTimerEvent(time); // generate a timer event every 2 seconds
+
+    }
+
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        //    ownerSayTag("Core: begin link_message: " + str);
+
+        list comm = llParseString2List(str, ["##"], [""]);
+
+        string commStr_0 = llList2String( comm,0);
+        string commStr_1 = llList2String( comm,1);
+
+        if(commStr_0 == "menu"){
+            //            llSay(0,str);
+            if(commStr_1 == "waitInit"){
+                llSetTimerEvent(0);
+
+                state preInit;
+            }
+            if(commStr_1 == "resetModule"){
+                publishDisplay("Resetting Module");
+
+                llSetTimerEvent(0);
+                llResetScript();
+            }
+        }
+    }
+    on_rez(integer start_param) {
+        // every time we're rezzed, reset the script
+        // this ensures that if we're transferred to a new owner, we're listening to them and not still to the previous one
+        llResetScript();
+        publishDisplay("Rezzed");
+        llSetText("..:: Welcome to The HyperGates ::..\nTheHyperGates.com\n- - -\nSuccessful " + moduleDisplayName +" Rez",<1.0,1.0,1.0>,1.0);
+    }
+
+}
+
+
+state preInit
+{
+    state_entry()
+    {
+
+        publishDisplay("Pre-Initializing");
+        llSetTimerEvent(1); // generate a timer event every 2 seconds
+
+    }
+
+
+    timer()
+    {
+        //llOwnerSay("menu:preInit:timer");
+        llSetTimerEvent(0); // generate a timer event every 2 seconds
+        llMessageLinked(LINK_ROOT, 0, "##core##initialized##menu", NULL_KEY);
+        state waitInit;
+
+    }
+
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        //    ownerSayTag("Core: begin link_message: " + str);
+
+        list comm = llParseString2List(str, ["##"], [""]);
+
+        string commStr_0 = llList2String( comm,0);
+        string commStr_1 = llList2String( comm,1);
+
+        if(commStr_0 == "menu"){
+            //            llSay(0,str);
+            if(commStr_1 == "beginInit"){
+                llSetTimerEvent(0); // generate a timer event every 2 seconds
+                state initialize;
+            }  else  if(commStr_1 == "resetModule"){
+                    publishDisplay("Resetting Module");
+
+                llResetScript();
+            }
+        }
+    }
+
+}
+
+
+state waitInit
+{
+    state_entry()
+    {
+        publishDisplay("Waiting to Initialize");
+
+    }
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        //ownerSayTag("Menu: begin link_message: " + str);
+
+        list comm = llParseString2List(str, ["##"], [""]);
+
+        string commStr_0 = llList2String( comm,0);
+        string commStr_1 = llList2String( comm,1);
+
+        if(commStr_0 == "menu"){
+            //            llSay(0,str);
+            if(commStr_1 == "beginInit"){
+                state initialize;
+            }  else  if(commStr_1 == "resetModule"){
+                    publishDisplay("Resetting Module");
+
+                llResetScript();
+            }
+        }
+    }
+
+}
+
+state initialize
+{
+    state_entry()
+    {
+        publishDisplay("Initializing");
+
+        initializeStrings();
+        initializeChannels();
+        if(mainDiaCh == 0){
+            llMessageLinked(LINK_SET, 0, "##menu##getMainDiaCh##", NULL_KEY);
+        }
+
+        llMessageLinked(LINK_SET, 0, "##init##doInitMenus##", NULL_KEY);
+        //        llMessageLinked(LINK_SET, 0, "##settings##getMainMenuTypes##", NULL_KEY);
+        //        llMessageLinked(LINK_SET, 0, "##settings##getMainMenuTypesAdmin##", NULL_KEY);
+        //        llMessageLinked(LINK_SET, 0, "##settings##getSubMenuTypes##", NULL_KEY);
+
+        publishDisplay("Initialized");
+        llMessageLinked(LINK_SET, 0, "##core##initialized##menu##" , NULL_KEY);
+
+        state activated;
+
+    }
+
+}
+
+
+
+state activated
+{
+    state_entry()
+    {
+
+    }
+
+
+
+    listen(integer _ch, string _nm, key _id, string data) {
+        ownerSayTag("listen >>>");
+        ownerSayTag("_id: " + (string)_id);
+        llMessageLinked(LINK_SET, _ch, "##core##core_listen##" + data, _id);
+        //        llMessageLinked(LINK_SET, _ch, "##admin##listen_admin##" + data, _id);
+        //        llMessageLinked(LINK_SET, _ch, "##list##listen_list##" + data, _id);
+        //        llMessageLinked(LINK_SET, _ch, "##dial##listen_dial##" + data, _id);
+
+        //        if(listen_main(_ch, _id, data)){
+        //        } else if(listen_admin(_ch, _id, data)){
+        //        if(listen_admin(_ch, _id, data)){
+        //        } else if(listen_list(_ch, _id, data)){
+        //        } else {
+        //            listen_dial(_ch, _id, data);
+        //        }
+        ownerSayTag("<<< listen");
+
+    }
+
+
+
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        ownerSayTag("Menu: begin link_message: " + str);
+
+        list comm = llParseString2List(str, ["##"], [""]);
+
+        string commStr_0 = llList2String( comm,0);
+        string commStr_1 = llList2String( comm,1);
+
+        if(llList2String( comm,0) == "default"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "remote_touch_start"){
+                remote_touch_start(id);
+            }
+        }
+
+        if(llList2String( comm,0) == "menu"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "listen_menu"){
+                listen_menu(num, llList2String( comm,2), id);
+            } else  if(llList2String( comm,1) == "getSubDiaAvatar"){
+                    getSubDiaAvatar();
+            } else  if(llList2String( comm,1) == "getSubDiaDestType"){
+                    getSubDiaDestType();
+            } else  if(llList2String( comm,1) == "getSubDiaHandle"){
+                    getSubDiaHandle();
+                //            llSay(0,str);
+            } else  if(llList2String( comm,1) == "processListMenuSelection"){
+                    // THIS WAS TAKEN OUT BECAUSE IT APPEARS TO BE BEINGCALLED FOMR ADIFFMODUE>>>REEATEDY>>>ON TIMER               processListMenuSelection(id , llList2String( comm,2));
+                    //            llSay(0,str);
+                }  else  if(commStr_1 == "resetModule"){
+                        publishDisplay("Resetting Module");
+
+                llResetScript();
+            }
+        }
+
+        if(llList2String( comm,0) == "display"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "publishDisplay"){
+                publishDisplay("");
+            }
+        }
+
+
+        if(llList2String( comm,0) == "debug"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "publishDebug"){
+                publishDebug("");
+            }
+        }
+
+
+        if(llList2String( comm,0) == "settings"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "setDestination"){
+                setDestination(num);
+            } else if(llList2String( comm,1) == "getDestination"){
+                    getDestination();
+            } else if(llList2String( comm,1) == "setMainDiaCh"){
+                    setMainDiaCh(num);
+            } else  if(llList2String( comm,1) == "getMainDiaCh"){
+                    getMainDiaCh();
+                //            llSay(0,str);
+            } else  if(llList2String( comm,1) == "getSubDiaCh"){
+                    getSubDiaCh();
+            } else  if(llList2String( comm,1) == "setMenuName"){
+                    setMenuName(llList2String( comm,2), num);
+            } else  if(llList2String( comm,1) == "setMenuLabels"){
+                    setMenuLabels(llList2String( comm,2), num);
+            } else  if(llList2String( comm,1) == "setMenuConfig"){
+                    setMenuConfig(llList2String( comm,2), num);
+            } else  if(llList2String( comm,1) == "setMenuActions"){
+                    setMenuActions(llList2String( comm,2), num);
+            } else  if(llList2String( comm,1) == "setMenuActionTypes"){
+                    setMenuActionTypes(llList2String( comm,2), num);
+            } else  if(llList2String( comm,1) == "setMenuBranches"){
+                    setMenuBranches(llList2String( comm,2), num);
+            } else if(llList2String( comm,1) == "setStridedBasicDestinations"){
+                    setStridedBasicDestinations(llList2String( comm,2));
+            } else if(llList2String( comm,1) == "setStridedHyperDestinations"){
+                    setStridedHyperDestinations(llList2String( comm,2));
+            } else if(llList2String( comm,1) == "setStridedHyperMenus"){
+                    setStridedHyperMenus(llList2String( comm,2));
+            } else if(llList2String( comm,1) == "setStridedBasicMenus"){
+                    setStridedBasicMenus(llList2String( comm,2));
+            }
+
+        }
+        //ownerSayTag("Core: end link_message: " + str);
+
+    }
+
+    http_response(key id, integer status, list meta, string body) {
+        ownerSayTag("Menu: http_response: " + (string)llStringLength(body));
+        if( llStringLength(body) > 8){
+            processHttpResponse(id, status, meta, body);
+        }
+    }
+
+
+
+}
+

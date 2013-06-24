@@ -1,0 +1,939 @@
+//
+// Copyright 2009-2013 Zvi ben Yaakov (a.k.a rdc) <hypergate.src@infosoc.net> http://TheHyperGates.com
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+// HyperGate Version 0.7.3
+
+
+/////////////// begin shared display functions ////////
+
+integer debugTags = 0;
+
+string moduleDisplayName = "Dial Module";
+string displayStatus = "";
+
+publishDisplay(string status){
+
+    if(!( status == "")){
+        displayStatus = status;
+    }
+    if(!( displayStatus == "")){
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + moduleDisplayName + "|" + displayStatus , NULL_KEY);
+
+    }
+}
+
+publishSimpleDisplay(string status){
+
+    if(!( status == "")){
+        displayStatus = status;
+    }
+    if(!( displayStatus == "")){
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + displayStatus , NULL_KEY);
+
+    }
+}
+
+
+publishDebug(string status){
+
+    if(!( status == "")){
+        //        displayStatus = status;
+    }
+    llMessageLinked(LINK_SET, 0, "##debug##updateSetDebug##" + moduleDisplayName + "##" + llDumpList2String(initDisplayData, "|") , NULL_KEY);
+
+}
+
+
+/////////////// begin  display related functions ////////
+
+
+// Replace a Stride in a List
+list fncReplaceStride(list lstSource, list lstStride, integer intIndex, integer intStride)
+{
+    integer intNumStrides = fncStrideCount(lstSource, intStride);
+
+    if (llGetListLength(lstStride) != intStride) { return lstSource; }
+
+    if (intNumStrides != 0 && intIndex < intNumStrides)
+    {
+        integer intOffset = intIndex * intStride;
+        return llListReplaceList(lstSource, lstStride, intOffset, intOffset + (intStride - 1));
+    }
+    return lstSource;
+}
+
+
+list initDisplayData = [];
+integer displayStrideLength = 2;
+
+list checkExistingDisplays(string displayName){
+
+
+    return fncFindStride(initDisplayData, [displayName], displayStrideLength);
+
+}
+
+
+ownerSayTag(string data){
+
+    if(debugTags == 1){
+        llOwnerSay("(" + moduleDisplayName +  ")" + data);
+    }
+
+}
+
+
+
+addInitDisplayData(string displayName, string displayStatus){
+
+    initDisplayData += [displayName]; // name displayed on left
+    initDisplayData += [displayStatus]; // status displayed on right
+
+}
+
+
+updateInitDisplayData(list initData, integer displayIndex){
+
+
+    initDisplayData = fncReplaceStride(initDisplayData, initData, displayIndex, displayStrideLength);
+
+}
+
+
+refreshInitDisplayData(list initData){
+
+    string displayName = "";
+    string displayStatus = "";
+
+    // this block copies Init data into strings that you can use
+    displayName = llList2String(initData, 0);
+    displayStatus = llList2String(initData, 1);
+
+
+    list displayExists = checkExistingDisplays(displayName);
+    integer displayIndex = llList2Integer(displayExists, 0);
+
+
+    if(displayIndex == -1  )  {
+
+        addInitDisplayData(displayName, displayStatus);
+
+    } else {
+
+            updateInitDisplayData(initData, displayIndex);
+
+    }
+
+
+}
+
+
+updateSetDebug(string data){
+
+    //ownerSayTag("inside: updateSetText");
+
+
+    list initData = llParseString2List(data, ["|"], []);
+
+    refreshInitDisplayData(initData);
+
+    string displayText = "";
+    integer displayStrideCount = 0;
+
+
+
+}
+
+
+
+
+
+/////////////// end shared display functions ////////
+
+
+
+/////////////// BEGIN   LibraryStridedLists //////////////////
+
+
+// Find a Stride within a List (returns stride index, and item subindex)
+list fncFindStride(list lstSource, list lstItem, integer intStride)
+{
+    integer intListIndex = llListFindList(lstSource, lstItem);
+
+    if (intListIndex == -1) { return [-1, -1]; }
+
+    integer intStrideIndex = intListIndex / intStride;
+    integer intSubIndex = intListIndex % intStride;
+
+    return [intStrideIndex, intSubIndex];
+}
+
+
+
+// Deletes a Stride from a List
+list fncDeleteStride(list lstSource, integer intIndex, integer intStride)
+{
+    integer intNumStrides = fncStrideCount(lstSource, intStride);
+
+    if (intNumStrides != 0 && intIndex < intNumStrides)
+    {
+        integer intOffset = intIndex * intStride;
+        return llDeleteSubList(lstSource, intOffset, intOffset + (intStride - 1));
+    }
+    return lstSource;
+}
+
+
+// Returns number of Strides in a List
+
+integer fncStrideCount(list lstSource, integer intStride)
+{
+    return llGetListLength(lstSource) / intStride;
+}
+
+
+// Returns a Stride from a List
+list fncGetStride(list lstSource, integer intIndex, integer intStride)
+{
+    integer intNumStrides = fncStrideCount(lstSource, intStride);
+
+    if (intNumStrides != 0 && intIndex < intNumStrides)
+    {
+        integer intOffset = intIndex * intStride;
+        return llList2List(lstSource, intOffset, intOffset + (intStride - 1));
+    }
+    return [];
+}
+
+
+// Retrieve a single element from all strides within a list
+list fncGetElementFromAllStrides(list lstSource, integer intSubIndex, integer intStride)
+{
+    if (intSubIndex >= intStride) { return []; }
+
+    integer intNumStrides = llGetListLength(lstSource) / intStride;
+    list lstRetVal = [];
+    if (intNumStrides != 0)
+    {
+        integer x;
+        integer intOffset;
+        for (x = 0; x < intNumStrides; x++)
+        {
+            intOffset = (x * intStride) + intSubIndex;
+            lstRetVal += llList2List(lstSource, intOffset, intOffset);
+        }
+    }
+    return lstRetVal;
+}
+
+/////////////// END   LibraryStridedLists //////////////////
+
+
+
+list subDiaAvatar;
+list subDiaDestType;
+list subDiaHandle;
+
+
+
+// strided destination format
+// [ string strideName, string gateKey, string destination, string region, vector coord, vector lookAt ]
+list stridedHyperDestinations = [];
+list stridedBasicDestinations = [];
+integer stridedDestinationsStrideLength = 6;
+
+
+
+
+// strided Dialing Data format
+// [ integer diaHandle, key diaAvatar, string menuStride, string destinationType ]
+list stridedDiaData = [];
+integer stridedDiaDataStrideLength = 4;
+
+
+list allStrideNames = [];
+
+
+// teleporter related
+string destination_type = "";
+string destination_name = "";
+vector destination_landing_point;
+vector landing_point_facing;
+string destination_gatekey = "";
+
+
+
+// Stargate configuration settings
+integer tpType = 0;
+integer hgEnabled = 0;
+
+integer destinationSet = 0;
+
+
+key    statsDataid;                               // http request id
+
+
+// http<->db related vars
+string protocol = "http";
+string thirdLevel = "basekix";
+string secondLevel = "rollin";
+string topLevel = "com";
+string URL ;
+
+
+
+
+initializeStrings(){
+
+    URL = protocol + "://" + thirdLevel + "." + secondLevel + "." + topLevel + "/"; // getHGData url
+
+}
+
+
+
+
+
+
+initializeStridedDestinations(){
+
+
+    stridedBasicDestinations = [];
+    stridedHyperDestinations = [];
+
+}
+
+
+////////// begin dial functions ///////
+
+
+
+loadDialData(integer msgndx){
+    ownerSayTag("loadDialData >>>");
+    list thisDiaData = fncGetStride(stridedDiaData, msgndx, stridedDiaDataStrideLength);
+    llListenRemove(llList2Integer( thisDiaData,0));
+    stridedDiaData = fncDeleteStride(stridedDiaData, msgndx, stridedDiaDataStrideLength);
+
+    ownerSayTag("stridedDiaData: " + llDumpList2String(stridedDiaData,"|"));
+
+    llMessageLinked(LINK_SET, 0, "##settings##setStridedDiaData##" + llDumpList2String(stridedDiaData,"|"), NULL_KEY);
+
+
+    ownerSayTag("<<< loadDialData");
+}
+
+list loadStridedTrimmedDestination(string this_dest_type, string strideName){
+
+    ownerSayTag("loadStridedTrimmedDestination >>>");
+    ownerSayTag("this_dest_type: " + this_dest_type);
+    ownerSayTag("strideName: " + strideName);
+
+    list stridedTrimmedDestination = [];
+    integer destStrideCount = 0;
+    integer strideMatched = 0;
+    string strideToMatch = "";
+    string strideNameSmall = llToLower(strideName);
+
+    if(this_dest_type == "BasicGrid"){
+        ownerSayTag("stridedBasicDestinations length: " + (string)llGetListLength(stridedBasicDestinations));
+
+        while((strideMatched == 0) && destStrideCount < (llGetListLength(stridedBasicDestinations) / stridedDestinationsStrideLength
+            )){
+
+                strideToMatch = llList2String(allStrideNames, destStrideCount);
+                ownerSayTag("matching: strideName:[" + strideNameSmall + "][" + strideToMatch + "]");
+
+                if(strideToMatch == strideNameSmall ){
+                    stridedTrimmedDestination +=  fncGetStride(stridedBasicDestinations, destStrideCount, stridedDestinationsStrideLength);
+
+                }
+                destStrideCount++;
+            }
+
+    }
+
+
+
+    if(this_dest_type == "HyperGrid"){
+        ownerSayTag("stridedHyperDestinations length: " +(string)llGetListLength(stridedHyperDestinations));
+
+        while((strideMatched == 0) && destStrideCount < (llGetListLength(stridedHyperDestinations) / stridedDestinationsStrideLength
+            )){
+
+                strideToMatch = llList2String(allStrideNames, destStrideCount);
+                ownerSayTag("matching: strideName:[" + strideNameSmall + "][" + strideToMatch + "]");
+
+                if(strideToMatch == strideNameSmall ){
+                    stridedTrimmedDestination +=  fncGetStride(stridedHyperDestinations, destStrideCount, stridedDestinationsStrideLength);
+
+
+                }
+                destStrideCount++;
+            }
+
+    }
+    ownerSayTag("<<< loadStridedTrimmedDestination");
+
+    return stridedTrimmedDestination;
+}
+
+
+
+
+list loadChosenDestination(string this_dest_type, string strideName, string data){
+
+    ownerSayTag("loadChosenDestination >>>");
+    list stridedTrimmedDestination = [];
+
+    stridedTrimmedDestination = loadStridedTrimmedDestination(this_dest_type, strideName);
+
+
+    list chosenStride = fncFindStride( stridedTrimmedDestination,[data], stridedDestinationsStrideLength);
+
+    ownerSayTag("chosenStride: " + llDumpList2String(chosenStride, "|"));
+    ownerSayTag("<<< loadChosenDestination");
+
+    return fncGetStride(stridedTrimmedDestination, llList2Integer(chosenStride,0), stridedDestinationsStrideLength);
+
+}
+
+
+prepareBasicGridTeleport(string str)
+{
+    ownerSayTag("prepareBasicGridTeleport >>>");
+    ownerSayTag("str: " + str);
+
+    ownerSayTag("tpType: " + (string)tpType);
+    list newRegionInfo = llParseString2List(str, ["|"], []);
+    destination_name = llList2String(newRegionInfo, 0);
+    destination_landing_point = (vector)llList2String([llList2String(newRegionInfo, 1)], 0);
+    landing_point_facing = (vector)llList2String([llList2String(newRegionInfo, 2)], 0);
+    destination_gatekey = llList2String(newRegionInfo, 3);
+
+    if(tpType == 1 && destination_name != ""){
+        // osfunction
+        osTeleportAgent(llList2String(newRegionInfo, 4), destination_name, destination_landing_point, landing_point_facing);
+
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + "Destination Loaded|Yes" , NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + "Destination Type|This Grid" , NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + "Destination Name|" + destination_name, NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + "Next Action|Click to Teleport", NULL_KEY);
+
+
+    } else {
+
+            llMessageLinked(LINK_SET, 0, "##settings##setBasicGridTeleport##" + str, NULL_KEY);
+
+    }
+
+    ownerSayTag("<<< prepareBasicGridTeleport");
+
+
+}
+
+prepareHyperGridTeleport(string str)
+{
+    ownerSayTag("prepareHyperGridTeleport >>>");
+    ownerSayTag("str: " + str);
+
+    list newRegionInfo = llParseString2List(str, ["|"], []);
+    destination_name = llList2String(newRegionInfo, 0);
+    destination_landing_point = (vector)llList2String([llList2String(newRegionInfo, 1)], 0);
+    landing_point_facing = (vector)llList2String([llList2String(newRegionInfo, 2)], 0);
+    destination_gatekey = llList2String(newRegionInfo, 3);
+
+
+    if(tpType == 1 && destination_name != ""){
+        // osfunction
+        osTeleportAgent(llList2String(newRegionInfo, 4), destination_name, destination_landing_point, landing_point_facing);
+
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + "Destination Loaded|Yes" , NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + "Destination Type|HyperGrid" , NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + "Destination Name|" + destination_name, NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + "Next Action|Click to Teleport", NULL_KEY);
+
+
+    } else {
+
+            llMessageLinked(LINK_SET, 0, "##settings##setHyperGridTeleport##" + str, NULL_KEY);
+
+    }
+
+    ownerSayTag("<<< prepareHyperGridTeleport");
+
+}
+
+
+createManifest(string this_dest_type, string mainAvatarKey){
+
+    destinationSet = 1;
+    llMessageLinked(LINK_SET, destinationSet, "##settings##setDestination##", mainAvatarKey);
+
+    string trimmedDestination = llStringTrim(destination_gatekey,STRING_TRIM);
+    string trimmedDestinationName = llStringTrim(destination_name,STRING_TRIM);
+
+    //send stats data
+    statsDataid = llHTTPRequest( URL + "ptSttsData/" +   mainAvatarKey   + "&name=" + llKey2Name(mainAvatarKey) + "&dt=" + this_dest_type  + "&dk=" + trimmedDestination  + "&dn=" +    trimmedDestinationName, [], "");
+
+    //         ownerSayTag(URL + "ptSttsData/" +   mainAvatarKey   + "&name=" + llKey2Name(mainAvatarKey) + "&dt=" + this_dest_type  +  "&dk=" + llStringTrim(destination_gatekey,STRING_TRIM)   + "&dn=" +    destination_name);
+
+
+}
+
+
+dialDestination(string this_dest_type, string strideName, string data, string mainAvatarKey){
+
+    ownerSayTag("dialDestination >>> " );
+
+    list chosenDestination = [];
+
+    chosenDestination = loadChosenDestination(this_dest_type, strideName, data);
+
+    llSay(0,"Preparing Teleport to: " + llList2String( chosenDestination,2));
+
+    if(this_dest_type == "BasicGrid"){
+
+        prepareBasicGridTeleport( llList2String( chosenDestination,2) + "|" + llList2String( chosenDestination,4) + "|" +
+            llList2String( chosenDestination,5) + "|" + llList2String( chosenDestination,1) + "|" + mainAvatarKey);
+
+    }
+
+
+
+    if(this_dest_type == "HyperGrid"){
+
+
+        prepareHyperGridTeleport( llList2String( chosenDestination,3) + "|" + llList2String( chosenDestination,4) + "|" +
+            llList2String( chosenDestination,5) + "|" + llList2String( chosenDestination,1) + "|" + mainAvatarKey);
+
+    }
+
+    createManifest(this_dest_type, mainAvatarKey);
+
+    llSetTimerEvent(20.0);
+    ownerSayTag("<<< dialDestination " );
+
+}
+
+
+
+
+prepareAgentTransfer(string this_dest_type, key _id, string strideName, string data){
+
+    ownerSayTag("prepareAgentTransfer >>>");
+
+    ownerSayTag("this_dest_type: " + this_dest_type);
+    ownerSayTag("strideName: " + strideName);
+    ownerSayTag("data: " + data);
+
+    list allDiaAvatars = [];
+
+    allDiaAvatars = fncGetElementFromAllStrides(stridedDiaData, 1, stridedDiaDataStrideLength);
+
+    integer msgndx = llListFindList( allDiaAvatars,[_id]);
+    ownerSayTag("msgndx: " + (string)msgndx);
+    if( msgndx != -1) {
+
+        loadDialData(msgndx);
+
+        string mainAvatarKey = _id;
+
+        dialDestination(this_dest_type, strideName, data, mainAvatarKey);
+
+    }
+
+    ownerSayTag("<<< prepareAgentTransfer ");
+
+}
+
+
+////////// end dial functions //////
+
+
+/// begin settings
+
+
+
+setHGStatus(integer status){
+
+    hgEnabled = status;
+
+}
+
+setTPType(integer status){
+
+    tpType = status;
+
+}
+
+
+setDestination(integer status){
+
+    destinationSet = status;
+
+}
+
+
+
+setSubDiaAvatar(string subData){
+    ownerSayTag("(Dial): setting subDiaAvatar");
+    subDiaAvatar = llParseString2List(subData, ["|"], []);
+
+}
+
+setSubDiaDestType(string subData){
+
+    subDiaDestType = llParseString2List(subData, ["|"], []);
+
+
+}
+
+setSubDiaHandle(string subData){
+
+    subDiaHandle = llParseString2List(subData, ["|"], []);
+
+}
+
+
+setAllStrideNames(string data){
+
+    allStrideNames = llParseString2List(data, ["|"], []);
+
+}
+
+
+setStridedBasicDestinations(string data){
+
+    stridedBasicDestinations = llParseString2List(data, ["|"], []);
+
+}
+
+setStridedHyperDestinations(string data){
+
+    stridedHyperDestinations = llParseString2List(data, ["|"], []);
+
+}
+
+setStridedDiaData(string data){
+
+    stridedDiaData = llParseString2List(data, ["|"], []);
+
+}
+
+
+
+/// end settings
+
+
+integer listen_dial(integer _ch, string data, key _id){
+
+    integer dialog_heard = 1;
+
+    //        processDialMenuSelection( _id, data, _ch);
+
+    return dialog_heard;
+
+}
+
+
+remote_touch_start(integer _det) {
+
+    ownerSayTag("remote_touch_start >>>");
+
+    if(destinationSet == 0){
+        //
+        //            initializeStridedMenus();
+        initializeStridedDestinations();
+    }
+    ownerSayTag("<<< remote_touch_start");
+
+}
+
+float time = 2; // timer interval
+
+
+default
+{
+
+    state_entry()
+    {
+
+        publishDisplay("Registering Module");
+        llSetTimerEvent(time); // generate a timer event every 2 seconds
+        llSetText("..:: Welcome to The HyperGates ::..\nTheHyperGates.com\n- - -\nSuccessful " + moduleDisplayName +" Entry",<1.0,1.0,1.0>,1.0);
+
+    }
+
+    timer()
+    {
+        //llOwnerSay("dial:default:timer");
+
+        llMessageLinked(LINK_ROOT, 0, "##core##loaded##dial", NULL_KEY);
+        llSetTimerEvent(time); // generate a timer event every 2 seconds
+
+    }
+
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        //    ownerSayTag("Core: begin link_message: " + str);
+
+        list comm = llParseString2List(str, ["##"], [""]);
+
+        string commStr_0 = llList2String( comm,0);
+        string commStr_1 = llList2String( comm,1);
+
+        if(commStr_0 == "dial"){
+            //            llSay(0,str);
+            if(commStr_1 == "waitInit"){
+                llSetTimerEvent(0);
+
+                state preInit;
+            }
+            if(commStr_1 == "resetModule"){
+                publishDisplay("Resetting Module");
+
+                llSetTimerEvent(0);
+                llResetScript();
+            }
+        }
+    }
+    on_rez(integer start_param) {
+        // every time we're rezzed, reset the script
+        // this ensures that if we're transferred to a new owner, we're listening to them and not still to the previous one
+        llResetScript();
+        publishDisplay("Rezzed");
+        llSetText("..:: Welcome to The HyperGates ::..\nTheHyperGates.com\n- - -\nSuccessful " + moduleDisplayName +" Rez",<1.0,1.0,1.0>,1.0);
+    }
+
+}
+
+
+state preInit
+{
+    state_entry()
+    {
+
+        publishDisplay("Pre-Initializing");
+        llSetTimerEvent(1); // generate a timer event every 2 seconds
+
+    }
+
+
+    timer()
+    {
+        //llOwnerSay("dial:preInit:timer");
+
+        llSetTimerEvent(0); // generate a timer event every 2 seconds
+        llMessageLinked(LINK_ROOT, 0, "##core##initialized##dial", NULL_KEY);
+        state waitInit;
+
+    }
+
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        //    ownerSayTag("Core: begin link_message: " + str);
+
+        list comm = llParseString2List(str, ["##"], [""]);
+
+        string commStr_0 = llList2String( comm,0);
+        string commStr_1 = llList2String( comm,1);
+
+        if(commStr_0 == "dial"){
+            //            llSay(0,str);
+            if(commStr_1 == "beginInit"){
+                llSetTimerEvent(0); // generate a timer event every 2 seconds
+                state initialize;
+            }  else  if(commStr_1 == "resetModule"){
+                    publishDisplay("Resetting Module");
+
+                llResetScript();
+            }
+        }
+    }
+
+}
+
+state waitInit
+{
+    state_entry()
+    {
+
+        publishDisplay("Waiting to Initialize");
+
+    }
+
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        //    ownerSayTag("Core: begin link_message: " + str);
+
+        list comm = llParseString2List(str, ["##"], [""]);
+
+        string commStr_0 = llList2String( comm,0);
+        string commStr_1 = llList2String( comm,1);
+
+        if(commStr_0 == "dial"){
+            //            llSay(0,str);
+            if(commStr_1 == "beginInit"){
+                state initialize;
+            }  else  if(commStr_1 == "resetModule"){
+                    publishDisplay("Resetting Module");
+
+                llResetScript();
+            }
+        }
+    }
+    on_rez(integer start_param) {
+        // every time we're rezzed, reset the script
+        // this ensures that if we're transferred to a new owner, we're listening to them and not still to the previous one
+        llResetScript();
+        publishDisplay("Rezzed");
+
+    }
+
+}
+
+state initialize
+{
+    state_entry()
+    {
+        publishDisplay("Initializing");
+
+        initializeStrings();
+
+        llMessageLinked(LINK_SET, 0, "##settings##getHGStatus##", NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##settings##getTPType##", NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##core##getDestination##", NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##settings##getSubDiaAvatar##", NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##settings##getSubDiaDestType##", NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##settings##getSubDiaHandle##", NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##settings##getAllStrideNames##", NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##settings##getStridedDiaData##", NULL_KEY);
+        publishDisplay("Initialized");
+        llMessageLinked(LINK_SET, 0, "##core##initialized##dial##" , NULL_KEY);
+        state activated;
+
+    }
+}
+
+
+state activated
+{
+    state_entry()
+    {
+
+    }
+
+
+    listen(integer _ch, string _nm, key _id, string data) {
+        ownerSayTag("listen >>>");
+        ownerSayTag("_id: " + (string)_id);
+        llMessageLinked(LINK_SET, _ch, "##core##core_listen##" + data, _id);
+
+        ownerSayTag("<<< listen");
+
+    }
+
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        //ownerSayTag("Dial: begin link_message: " + str);
+
+        list comm = llParseString2List(str, ["##"], [""]);
+        string commStr_0 = llList2String( comm,0);
+        string commStr_1 = llList2String( comm,1);
+
+        if(llList2String( comm,0) == "dial"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "listen_dial"){
+                listen_dial(num, llList2String( comm,2), id);
+                //            llSay(0,str);
+            } else if(llList2String( comm,1) == "prepareAgentTransfer"){
+                    prepareAgentTransfer(llList2String( comm,2), id, llList2String( comm,3), llList2String( comm,4));
+            } else  if(commStr_1 == "resetModule"){
+                    publishDisplay("Resetting Module");
+
+                llResetScript();
+            }
+        }
+
+        if(llList2String( comm,0) == "default"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "remote_touch_start"){
+                remote_touch_start(num);
+                //            llSay(0,str);
+            }
+        }
+
+        if(llList2String( comm,0) == "display"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "publishDisplay"){
+                publishDisplay("");
+            }
+        }
+
+
+        if(llList2String( comm,0) == "debug"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "publishDebug"){
+                publishDebug("");
+            }
+        }
+
+        if(llList2String( comm,0) == "settings"){
+            //ownerSayTag("(Dial) begin settings: " + llList2String( comm,1));
+            if(llList2String( comm,1) == "setHGStatus"){
+                setHGStatus(num);
+            } else if(llList2String( comm,1) == "setTPType"){
+                    setTPType(num);
+            } else if(llList2String( comm,1) == "setDestination"){
+                    setDestination(num);
+            } else if(llList2String( comm,1) == "setSubDiaAvatar"){
+                    //ownerSayTag("(Dial) begin setSubDiaAvatar ");
+                    setSubDiaAvatar(llList2String( comm,2));
+            } else if(llList2String( comm,1) == "setSubDiaDestType"){
+                    setSubDiaDestType(llList2String( comm,2));
+            } else if(llList2String( comm,1) == "setSubDiaHandle"){
+                    setSubDiaHandle(llList2String( comm,2));
+            } else if(llList2String( comm,1) == "setAllStrideNames"){
+                    setAllStrideNames(llList2String( comm,2));
+            } else if(llList2String( comm,1) == "setStridedBasicDestinations"){
+                    setStridedBasicDestinations(llList2String( comm,2));
+            } else if(llList2String( comm,1) == "setStridedHyperDestinations"){
+                    setStridedHyperDestinations(llList2String( comm,2));
+            } else if(llList2String( comm,1) == "setStridedDiaData"){
+                    setStridedDiaData(llList2String( comm,2));
+            }
+        }
+        //ownerSayTag("Dial: end link_message: " + str);
+
+    }
+
+
+    timer(){
+        //        llOwnerSay("dial:activated:timer");
+        ownerSayTag("timer >>>");
+        //prepareHyperGridTeleport("" + "|" + "" + "|" + "");
+        destinationSet = 0;
+        publishSimpleDisplay("Destination|( Touch to select new Destination )");
+        publishSimpleDisplay("Dest Type|.........");
+        ownerSayTag("RESETTING DESTINATION");
+        //        llOwnerSay("RESETTING DESTINATION");
+        llMessageLinked(LINK_SET, destinationSet, "##settings##setDestination##", NULL_KEY);
+        llSetTimerEvent(0);
+        ownerSayTag("<<< timer");
+    }
+
+
+}
+ 

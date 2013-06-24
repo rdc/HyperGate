@@ -1,0 +1,1056 @@
+//
+// Copyright 2009-2013 Zvi ben Yaakov (a.k.a rdc) <hypergate.src@infosoc.net> http://TheHyperGates.com
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+// HyperGate Version 0.7.3
+
+
+string  SOFTWARE_REV = "v0.7.3";
+
+
+
+/////////////// BEGIN LibraryStridedLists //////////////////
+
+// Strided Functions For working with Strided Lists.
+// By Aakanaar LaSalle
+
+// the intStride parameter is the length of the strides within the list
+// the intIndex is which stride we're working with.
+// the intSubIndex is which element of the stride we're working with.
+
+// Returns number of Strides in a List
+
+integer fncStrideCount(list lstSource, integer intStride)
+{
+    return llGetListLength(lstSource) / intStride;
+}
+
+// Find a Stride within a List (returns stride index, and item subindex)
+list fncFindStride(list lstSource, list lstItem, integer intStride)
+{
+    integer intListIndex = llListFindList(lstSource, lstItem);
+
+    if (intListIndex == -1) { return [-1, -1]; }
+
+    integer intStrideIndex = intListIndex / intStride;
+    integer intSubIndex = intListIndex % intStride;
+
+    return [intStrideIndex, intSubIndex];
+}
+
+// Deletes a Stride from a List
+list fncDeleteStride(list lstSource, integer intIndex, integer intStride)
+{
+    integer intNumStrides = fncStrideCount(lstSource, intStride);
+
+    if (intNumStrides != 0 && intIndex < intNumStrides)
+    {
+        integer intOffset = intIndex * intStride;
+        return llDeleteSubList(lstSource, intOffset, intOffset + (intStride - 1));
+    }
+    return lstSource;
+}
+
+// Returns a Stride from a List
+list fncGetStride(list lstSource, integer intIndex, integer intStride)
+{
+    integer intNumStrides = fncStrideCount(lstSource, intStride);
+
+    if (intNumStrides != 0 && intIndex < intNumStrides)
+    {
+        integer intOffset = intIndex * intStride;
+        return llList2List(lstSource, intOffset, intOffset + (intStride - 1));
+    }
+    return [];
+}
+
+// Replace a Stride in a List
+list fncReplaceStride(list lstSource, list lstStride, integer intIndex, integer intStride)
+{
+    integer intNumStrides = fncStrideCount(lstSource, intStride);
+
+    if (llGetListLength(lstStride) != intStride) { return lstSource; }
+
+    if (intNumStrides != 0 && intIndex < intNumStrides)
+    {
+        integer intOffset = intIndex * intStride;
+        return llListReplaceList(lstSource, lstStride, intOffset, intOffset + (intStride - 1));
+    }
+    return lstSource;
+}
+
+// Retrieve a single element from a Stride within a List
+list fncGetElement(list lstSource, integer intIndex, integer intSubIndex, integer intStride)
+{
+    if (intSubIndex >= intStride) { return []; }
+
+    integer intNumStrides = fncStrideCount(lstSource, intStride);
+
+    if (intNumStrides != 0 && intIndex < intNumStrides)
+    {
+        integer intOffset = (intIndex * intStride) + intSubIndex;
+        return llList2List(lstSource, intOffset, intOffset);
+    }
+    return [];
+}
+
+// Update a single item in a Stride within a List
+list fncReplaceElement(list lstSource, list lstItem, integer intIndex, integer intSubIndex, integer intStride)
+{
+    integer intNumStrides = fncStrideCount(lstSource, intStride);
+
+    if (llGetListLength(lstItem) != 1) { return lstSource; }
+
+    if (intNumStrides != 0 && intIndex < intNumStrides)
+    {
+        integer intOffset = (intIndex * intStride) + intSubIndex;
+        return llListReplaceList(lstSource, lstItem, intOffset, intOffset);
+    }
+    return lstSource;
+}
+
+// Retrieve a single element from all strides within a list
+list fncGetElementFromAllStrides(list lstSource, integer intSubIndex, integer intStride)
+{
+    if (intSubIndex >= intStride) { return []; }
+
+    integer intNumStrides = llGetListLength(lstSource) / intStride;
+    list lstRetVal = [];
+    if (intNumStrides != 0)
+    {
+        integer x;
+        integer intOffset;
+        for (x = 0; x < intNumStrides; x++)
+        {
+            intOffset = (x * intStride) + intSubIndex;
+            lstRetVal += llList2List(lstSource, intOffset, intOffset);
+        }
+    }
+    return lstRetVal;
+}
+
+/////////////// END   LibraryStridedLists //////////////////
+
+
+
+integer debugDisplayText = 0;
+//None of these parameters need to be changed or set
+
+string moduleDisplayName = "Display Module";
+
+
+
+// menu related vars
+
+//main menu related
+
+list mainMenuTypes = ["HyperGrid","This Grid"];
+list mainMenuTypesAdmin = ["HyperGrid","This Grid","Admin"];
+
+//list subMenuTypes = ["Popular", "Busy", "All"];
+
+
+
+integer displayStrideLength = 2;
+
+
+
+
+// http<->db related vars
+string protocol = "http";
+string thirdLevel = "basekix";
+string secondLevel = "rollin";
+string topLevel = "com";
+string URL ;
+string HGid  = "";           // HyperGrid ID
+
+
+
+list initDisplayData = [];
+list activatedDisplayData = [];
+
+
+initializeStrings(){
+
+    URL = protocol + "://" + thirdLevel + "." + secondLevel + "." + topLevel + "/"; // getHGData url
+
+}
+
+
+
+
+/// end settings
+
+
+
+
+/////////////// begin  display related functions ////////
+
+
+string coreStatus = "";
+
+
+list checkExistingDisplays(string displayPage, string displayName){
+
+    list displayData = [];
+
+    if(displayPage == "init"){
+        displayData = initDisplayData;
+    } else if(displayPage == "activated"){
+            displayData = activatedDisplayData;
+    }
+
+    return fncFindStride(displayData, [displayName], displayStrideLength);
+
+}
+
+
+ownerSayTag(string data){
+
+    if(debugDisplayText == 1){
+        llOwnerSay("(" + moduleDisplayName +  ")" + data);
+    }
+
+}
+
+
+addDisplayData(string displayPage, string displayName, string displayStatus){
+
+    // this could be more intelligent
+    if(displayPage == "init"){
+        initDisplayData += [displayName]; // name displayed on left
+        initDisplayData += [displayStatus]; // status displayed on right
+    } else if(displayPage == "activated"){
+            activatedDisplayData += [displayName]; // name displayed on left
+        activatedDisplayData += [displayStatus]; // status displayed on right
+    }
+
+
+}
+
+
+updateDisplayData(string displayPage, list initData, integer displayIndex){
+
+    if(displayPage == "init"){
+        initDisplayData = fncReplaceStride(initDisplayData, initData, displayIndex, displayStrideLength);
+    } else if(displayPage == "activated"){
+            activatedDisplayData = fncReplaceStride(activatedDisplayData, initData, displayIndex, displayStrideLength);
+    }
+
+
+
+}
+
+
+refreshDisplayData(string displayPage, list initData){
+
+    string displayName = "";
+    string displayStatus = "";
+
+    // this block copies Init data into strings that you can use
+    displayName = llList2String(initData, 0);
+    displayStatus = llList2String(initData, 1);
+
+    if(displayName == "Core Module"){
+        coreStatus = displayStatus;
+        //   llOwnerSay("## changing coreStatus: " + displayStatus);
+    }
+
+
+
+
+    list displayExists = checkExistingDisplays(displayPage, displayName);
+    integer displayIndex = llList2Integer(displayExists, 0);
+
+
+    if(displayIndex == -1  )  {
+
+        addDisplayData(displayPage, displayName, displayStatus);
+
+    } else {
+
+            updateDisplayData(displayPage, initData, displayIndex);
+
+    }
+
+
+
+
+    if(coreStatus != "Activated" && displayStatus == "Initialized"){
+        //    llOwnerSay("## checking for fullyInitialized");
+        integer fullyInitialized = 1;
+        integer displayStrideCount = 0;
+
+        string theModule = "";
+        string theStatus = "" ;
+
+        while( displayStrideCount < (llGetListLength(initDisplayData) / displayStrideLength )){
+
+            theModule = llList2String(initDisplayData, (displayStrideCount * displayStrideLength)) ;
+            theStatus = llList2String(initDisplayData, (displayStrideCount * displayStrideLength) + 1) ;
+
+            if( "Core Module" != theModule ){
+
+                if( "Initialized" != theStatus ){
+
+                    //    llOwnerSay("##theModule: " + theModule);
+                    //    llOwnerSay("##theStatus: " + theStatus);
+
+                    fullyInitialized = 0;
+
+                }
+            }
+
+            displayStrideCount++;
+
+        }
+
+
+
+        if( fullyInitialized == 1){
+            //    llOwnerSay("## YES fullyInitialized");
+            llMessageLinked(LINK_SET, 0, "##core##reActivate##" , NULL_KEY);
+
+        } else {
+                //            llOwnerSay("## NOT fullyInitialized");
+
+            }
+
+
+    }
+
+
+
+}
+
+
+
+updateSetText(integer _ch, key _id, string data){
+
+    //ownerSayTag("inside: updateSetText");
+
+
+    list initData = llParseString2List(data, ["|"], []);
+
+    refreshDisplayData("init", initData);
+
+    string displayText = "";
+    integer displayStrideCount = 0;
+    string moduleName = "";
+
+    while( displayStrideCount < (llGetListLength(initDisplayData) / displayStrideLength )){
+
+        moduleName = llList2String(initDisplayData, (displayStrideCount * displayStrideLength) );
+
+        displayText +=  "[ " + moduleName + " : " + llList2String(initDisplayData, ((displayStrideCount * displayStrideLength) + 1) ) + " ]" + "\n";
+
+        displayText += getDebugData(moduleName);
+
+        displayStrideCount++;
+    }
+
+
+    llSetText(displayText,<1.0,1.0,1.0>,1.0);
+
+    //ownerSayTag("leaving: updateSetText");
+
+    //return 0;
+
+}
+
+/////////////////////////////
+
+string headerName = "";
+string headerStatus = "";
+
+
+refreshHeaderData(string displayPage, list initData){
+
+
+    // this block copies Init data into strings that you can use
+    headerName = llList2String(initData, 0);
+    headerStatus = llList2String(initData, 1);
+
+    refreshDisplayData(displayPage, initData);
+}
+
+
+
+updateSetHeader(integer _ch, key _id, string data){
+
+    //ownerSayTag("inside: updateSetHeader: " + data);
+
+
+    list initData = llParseString2List(data, ["|"], []);
+
+    refreshHeaderData("init", initData);
+
+    string displayText = "";
+    integer displayStrideCount = 0;
+    string moduleName = "";
+
+    moduleName = headerName;
+
+    displayText +=  "[ " + moduleName + " : " + headerStatus + " ]" + "\n";
+
+    displayText += getDebugData(moduleName);
+
+
+
+    llSetText(displayText,<1.0,1.0,1.0>,1.0);
+
+    //ownerSayTag("leaving: updateSetHeader");
+    ownerSayTag("displayText: " + displayText);
+
+    //return 0;
+
+}
+
+
+
+/////////////////////////////
+
+
+displayHeader(string moduleName){
+
+    //ownerSayTag("inside: updateSetHeader");
+
+
+
+    string displayText = "";
+    integer displayStrideCount = 0;
+
+
+    //ownerSayTag("length: " + llGetListLength(initDisplayData));
+
+    while( displayStrideCount < (llGetListLength(initDisplayData) / displayStrideLength )){
+
+        string toMatch = llToLower(llList2String(initDisplayData, (displayStrideCount * displayStrideLength)) );
+
+        if( (moduleName + " module") == toMatch ){
+
+            displayText +=  "[ " + moduleName + " : " + llList2String(initDisplayData, ((displayStrideCount * displayStrideLength) + 1) ) + " ]" + "\n";
+            string matched = llList2String(initDisplayData, (displayStrideCount * displayStrideLength));
+            displayText += getDebugData(matched);
+
+        }
+
+        displayStrideCount++;
+    }
+
+
+
+
+
+    llSetText(displayText,<1.0,1.0,1.0>,1.0);
+
+    //ownerSayTag("leaving: updateSetHeader");
+    ownerSayTag("displayText: " + displayText);
+
+    //return 0;
+
+}
+
+
+/////////////////////////////
+
+updateSetInitDisplay(integer _ch, key _id, string data){
+
+    //ownerSayTag("inside: updateSetHeader: " + data);
+
+
+    list initData = llParseString2List(data, ["|"], []);
+
+    refreshHeaderData("init", initData);
+
+    if(coreStatus == "Activated"){
+        displayActivatedText();
+    } else {
+            displayInitText();
+    }
+
+    //return 0;
+
+}
+
+/////////////////////////////
+
+
+displayInitText(){
+
+    //ownerSayTag("inside: updateSetHeader");
+
+
+
+    string displayText = "..:: Welcome to The HyperGates ::..\n";
+    displayText +=  "TheHyperGates.com\n";
+    displayText +=  "-\n";
+    displayText +=  SOFTWARE_REV + "\n";
+    displayText +=  "- - -\n";
+    integer displayStrideCount = 0;
+
+    string moduleName = "";
+    //ownerSayTag("length: " + llGetListLength(initDisplayData));
+
+
+    // this should either build a new list of just the module name and use llListFindList to get the index
+    // integer index = llListFindList( myList, [searchFor] );
+    //or something, anything else
+    while( displayStrideCount < (llGetListLength(initDisplayData) / displayStrideLength )){
+
+        string toMatch = llList2String(initDisplayData, (displayStrideCount * displayStrideLength)) ;
+
+        if( ("Core Module") == toMatch ){
+
+
+            displayText +=  "Status : " + llList2String(initDisplayData, ((displayStrideCount * displayStrideLength) + 1) ) + "" + "\n";
+            string matched = llList2String(initDisplayData, (displayStrideCount * displayStrideLength));
+            displayText +=  "- - -\n";
+
+        }
+
+        displayStrideCount++;
+
+    }
+
+    displayText +=  "-[ Modules ]-\n";
+
+
+
+    displayStrideCount = 0;
+    while( displayStrideCount < (llGetListLength(initDisplayData) / displayStrideLength )){
+
+        string toMatch = llList2String(initDisplayData, (displayStrideCount * displayStrideLength)) ;
+
+        if( "Core Module" != toMatch ){
+
+
+            moduleName = toMatch;
+            //            displayText +=  "[ " + moduleName + " : " + llList2String(initDisplayData, ((displayStrideCount * displayStrideLength) + 1) ) + " ]" + "\n";
+            displayText +=   llGetSubString(moduleName, 0 , (llStringLength(moduleName) - 7)) + " : " + llList2String(initDisplayData, ((displayStrideCount * displayStrideLength) + 1) ) +  "\n";
+            string matched = llList2String(initDisplayData, (displayStrideCount * displayStrideLength));
+
+        }
+
+        displayStrideCount++;
+
+    }
+
+
+    llSetText(displayText,<1.0,1.0,1.0>,1.0);
+
+    //ownerSayTag("leaving: updateSetHeader");
+    ownerSayTag("displayText: " + displayText);
+
+    //return 0;
+
+}
+
+
+/////////////////////////////
+
+updateSetActivatedDisplay(integer _ch, key _id, string data){
+
+    //ownerSayTag("inside: updateSetHeader: " + data);
+
+
+    list initData = llParseString2List(data, ["|"], []);
+
+    if(llList2String(initData, 1) == "Registering Module"){
+        updateSetInitDisplay(_ch, _id, data);
+        llMessageLinked(LINK_SET, 0, "##core##reInsertModule##" , NULL_KEY);
+        return;
+    }
+
+    //refreshInitHeaderData(initData);
+    refreshHeaderData("activated", initData);
+
+
+    // this next block is doing nothing but reminding me of some vars & funcs that can be used here
+    string displayText = "";
+    integer displayStrideCount = 0;
+    string moduleName = "";
+
+    moduleName = headerName;
+
+    displayText +=  "[ " + moduleName + " : " + headerStatus + " ]" + "\n";
+
+
+
+
+    displayActivatedText();
+
+
+
+}
+
+/////////////////////////////
+
+
+displayActivatedText(){
+
+    //ownerSayTag("inside: updateSetHeader");
+
+
+
+    string displayText = "..:: Welcome to The HyperGates ::..\n";
+    displayText +=  "TheHyperGates.com\n";
+    displayText +=  "-\n";
+    displayText +=  SOFTWARE_REV + "\n";
+    displayText +=  "- - -\n";
+    integer displayStrideCount = 0;
+
+    string moduleName = "";
+    //ownerSayTag("length: " + llGetListLength(initDisplayData));
+
+
+    // this should either build a new list of just the module name and use llListFindList to get the index
+    // integer index = llListFindList( myList, [searchFor] );
+    //or something, anything else
+    while( displayStrideCount < (llGetListLength(initDisplayData) / displayStrideLength )){
+
+        string toMatch = llList2String(initDisplayData, (displayStrideCount * displayStrideLength)) ;
+
+        if( ("Core Module") == toMatch ){
+
+
+            displayText +=  "Status : " + llList2String(initDisplayData, ((displayStrideCount * displayStrideLength) + 1) ) + "" + "\n";
+            string matched = llList2String(initDisplayData, (displayStrideCount * displayStrideLength));
+            displayText +=  "- - -\n";
+
+        }
+
+        displayStrideCount++;
+
+    }
+
+    displayText +=  "-[ HG/TP Data ]-\n";
+
+
+
+    displayStrideCount = 0;
+    integer hasData = 0;
+    while( displayStrideCount < (llGetListLength(activatedDisplayData) / displayStrideLength )){
+
+        string toMatch = llList2String(activatedDisplayData, (displayStrideCount * displayStrideLength)) ;
+
+        if( "Core Module" != toMatch ){
+
+            hasData++;
+            moduleName = toMatch;
+            //            displayText +=  "[ " + moduleName + " : " + llList2String(initDisplayData, ((displayStrideCount * displayStrideLength) + 1) ) + " ]" + "\n";
+            displayText +=   llList2String(activatedDisplayData, ((displayStrideCount * displayStrideLength) ) ) + " : " + llList2String(activatedDisplayData, ((displayStrideCount * displayStrideLength) + 1) ) +  "\n";
+            string matched = llList2String(activatedDisplayData, (displayStrideCount * displayStrideLength));
+
+        }
+
+        displayStrideCount++;
+
+    }
+
+
+    if(hasData == 0){
+
+        displayText +=  "\n-\nTouch to select your Destination\n";
+
+    }
+
+    llSetText(displayText,<1.0,1.0,1.0>,1.0);
+
+    //ownerSayTag("leaving: updateSetHeader");
+    ownerSayTag("displayText: " + displayText);
+
+    //return 0;
+
+}
+
+
+/////////////////////////////
+
+list debugKeys = [];
+integer debugStrideLength = 2;
+
+
+list checkExistingDebugs(string debugName){
+
+
+    return fncFindStride(debugKeys, [debugName], debugStrideLength);
+
+}
+
+
+
+addInitDebugData(string displayName, string displayStatus){
+
+    debugKeys += [displayName]; // name displayed on left
+    debugKeys += [displayStatus]; // status displayed on right
+
+}
+
+
+updateInitDebugData(list debugData, integer debugIndex){
+
+
+    debugKeys = fncReplaceStride(debugKeys, debugData, debugIndex, debugStrideLength);
+
+}
+
+
+string assembleDebugData(string data){
+
+
+    list debugData = llParseString2List(data, ["|"], []);
+
+    string displayText = "";
+    integer displayStrideCount = 0;
+    string debugItemName = "";
+
+    while( displayStrideCount < (llGetListLength(debugData) / displayStrideLength )){
+
+        debugItemName = llList2String(debugData, (displayStrideCount * displayStrideLength) );
+
+        displayText +=   debugItemName + " : " + llList2String(debugData, ((displayStrideCount * displayStrideLength) + 1) )  + "\n";
+
+
+        displayStrideCount++;
+    }
+
+
+    return displayText;
+
+}
+
+
+string getDebugData(string moduleName){
+
+    list displayExists = checkExistingDebugs(moduleName);
+    integer displayIndex = llList2Integer(displayExists, 0);
+
+
+    if(displayIndex == -1  )  {
+
+        return "";
+
+    } else {
+
+            list thisDebugHolder = fncGetElement(debugKeys, displayIndex, 1, debugStrideLength);
+        string thisDebugData = llList2String(thisDebugHolder, 0);
+
+        return assembleDebugData(thisDebugData);
+
+    }
+
+
+
+}
+
+
+refreshInitDebugData(list debugData){
+
+    string debugName = "";
+    string debugStatus = "";
+
+    // this block copies Init data into strings that you can use
+    debugName = llList2String(debugData, 0);
+    debugStatus = llList2String(debugData, 1);
+
+
+    list displayExists = checkExistingDebugs(debugName);
+    integer displayIndex = llList2Integer(displayExists, 0);
+
+
+    if(displayIndex == -1  )  {
+
+        addInitDebugData(debugName, debugStatus);
+
+    } else {
+
+            updateInitDebugData(debugData, displayIndex);
+
+    }
+
+
+}
+
+
+updateSetDebug(integer _ch, key _id, string moduleName, string data){
+
+    //ownerSayTag("inside: updateSetText");
+
+
+    list initData = [ moduleName, data ];
+
+    refreshInitDebugData(initData);
+
+    string displayText = "";
+    integer displayStrideCount = 0;
+
+    while( displayStrideCount < (llGetListLength(initDisplayData) / displayStrideLength )){
+
+
+
+        displayText +=  llList2String(initDisplayData, (displayStrideCount * displayStrideLength) ) + " : " + llList2String(initDisplayData, ((displayStrideCount * displayStrideLength) + 1) ) + "\n";
+
+        displayStrideCount++;
+    }
+
+
+    llSetText(displayText,<1.0,1.0,1.0>,1.0);
+
+    //ownerSayTag("leaving: updateSetText");
+
+    //return 0;
+
+}
+
+
+updateSetDebugInField(integer _ch, key _id, string moduleName, string data){
+
+    //ownerSayTag("inside: updateSetText");
+
+
+    list initData = [ moduleName, data ];
+
+    refreshInitDebugData(initData);
+
+
+}
+
+float time = 2; // timer interval
+
+integer coreInitialized = 0;
+
+
+default
+{
+    state_entry()
+    {
+ 
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + "Display Module|Initializing", NULL_KEY);
+
+        llMessageLinked(LINK_SET, 0, "##debug##publishDebug##" , NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##display##publishDisplay##" , NULL_KEY);
+        llListen(18,"",llGetOwner(),"");
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + "Display Module|Initialized" , NULL_KEY);
+
+        llMessageLinked(LINK_SET, 0, "##core##beginInit##" , NULL_KEY);
+        //llOwnerSay("Display:default:state_entry: sent Core beginInit");
+        //publishDisplay("Registering Module");
+        llSetTimerEvent(time); // generate a timer event every 2 seconds
+
+
+
+        llSetText("..:: Welcome to The HyperGates ::..\nTheHyperGates.com\n- - -\nPlease wait while your HyperGate initializes...",<1.0,1.0,1.0>,1.0);
+    }
+
+
+    timer()
+    {
+        //llOwnerSay("display:default:timer");
+        llMessageLinked(LINK_ROOT, 0, "##core##loaded##display", NULL_KEY);
+        llMessageLinked(LINK_ROOT, 0, "##core##beginInit##" , NULL_KEY);
+        //}
+        llSetText("..:: Welcome to The HyperGates ::..\nTheHyperGates.com\n- - -\nPinging Core ...",<1.0,1.0,1.0>,1.0);
+        //llOwnerSay("Display:default:timer: sending Core neginInit");
+        llSetTimerEvent(time); // generate a timer event every 2 seconds
+
+    }
+
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        //llOwnerSay("(Display)begin link_message: " + str);
+
+
+        list comm = llParseString2List(str, ["##"], [""]);
+
+        string commStr_0 = llList2String( comm,0);
+        string commStr_1 = llList2String( comm,1);
+
+        if(commStr_0 == "display"){
+            //            llSay(0,str);
+            if(commStr_1 == "waitInit"){
+                llSetTimerEvent(0);
+                llMessageLinked(LINK_SET, 0, "##core##beginInit##" , NULL_KEY);
+
+                //                state waitInit;
+                state inTheField;
+
+            }
+            if(commStr_1 == "resetModule"){
+                //        publishDisplay("Resetting Module");
+
+                llSetTimerEvent(0);
+                llResetScript();
+            }
+        }
+    }
+
+    on_rez(integer start_param) {
+        // every time we're rezzed, reset the script
+        // this ensures that if we're transferred to a new owner, we're listening to them and not still to the previous one
+        llResetScript();
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + "Display|Rezzed", NULL_KEY);
+        llSetText("..:: Welcome to The HyperGates ::..\nTheHyperGates.com\n- - -\nSuccessful " + moduleDisplayName +" Rez",<1.0,1.0,1.0>,1.0);
+
+    }
+
+
+}
+
+
+state fullDebug
+{
+
+
+
+    listen(integer _ch, string _nm, key _id, string data) {
+
+        if(_ch == 18){
+            //ownerSayTag("data: " + data);
+
+            displayHeader(data);
+
+        }
+
+
+    }
+
+
+
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        //ownerSayTag("(display): begin link_message: " + str);
+
+        list comm = llParseString2List(str, ["##"], [""]);
+
+
+        if(llList2String( comm,0) == "display"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "updateSetText"){
+                //updateSetText(num, id, llList2String( comm,2));
+                updateSetHeader(num, id, llList2String( comm,2));
+            }
+        }
+
+        if(llList2String( comm,0) == "debug"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "updateSetDebug"){
+                updateSetDebug(num, id, llList2String( comm,2), llList2String( comm,3));
+                updateSetHeader(num, id, llList2String( comm,2));
+            }
+        }
+
+
+        //ownerSayTag("(display): end link_message: " + str);
+
+    }
+
+
+
+}
+
+
+state inTheField
+{
+
+
+    state_entry()
+    {
+
+        if(coreInitialized == 0){
+            llSetTimerEvent(time); // generate a timer event every 2 seconds
+
+        }
+
+        llMessageLinked(LINK_SET, 0, "##settings##resetModule##" , NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##dial##resetModule##" , NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##menu##resetModule##" , NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##init##resetModule##" , NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##list##resetModule##" , NULL_KEY);
+        llMessageLinked(LINK_SET, 0, "##monitor##resetModule##" , NULL_KEY);
+        //         llMessageLinked(LINK_SET, 0, "##display##resetModule##" , NULL_KEY);
+    }
+    timer()
+    {
+        //        llOwnerSay("display:inTheField:timer");
+        if(coreInitialized == 0){
+
+            //        llMessageLinked(LINK_SET, 0, "##core##loaded##display", NULL_KEY);
+            llMessageLinked(LINK_SET, 0, "##core##loaded##display", NULL_KEY);
+            llMessageLinked(LINK_SET, 0, "##core##beginInit##" , NULL_KEY);
+            llSetText("..:: Welcome to The HyperGates ::..\nTheHyperGates.com\n- - -\nPinging Core from Infield...",<1.0,1.0,1.0>,1.0);
+
+            llSetTimerEvent(time); // generate a timer event every 2 seconds
+        }
+    }
+    listen(integer _ch, string _nm, key _id, string data) {
+
+        if(_ch == 18){
+            //ownerSayTag("data: " + data);
+
+            displayHeader(data);
+
+        }
+
+
+    }
+
+
+
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        //ownerSayTag("(display): begin link_message: " + str);
+
+        list comm = llParseString2List(str, ["##"], [""]);
+
+        string commStr_0 = llList2String( comm,0);
+        string commStr_1 = llList2String( comm,1);
+        if(llList2String( comm,0) == "display"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "updateSetText"){
+                //updateSetText(num, id, llList2String( comm,2));
+                if(coreStatus == "Activated"){
+                    updateSetActivatedDisplay(num, id, llList2String( comm,2));
+                } else {
+                        updateSetInitDisplay(num, id, llList2String( comm,2));
+                }
+
+            } else     if(commStr_1 == "waitInit"){
+                    llSetTimerEvent(0);
+                coreInitialized = 1;
+                //llOwnerSay("CORE INITIALIZED");
+            }  else  if(commStr_1 == "resetModule"){
+                    // publishDisplay("Resetting Module");
+
+                    llResetScript();
+            }
+        }
+
+        if(llList2String( comm,0) == "debug"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "updateSetDebug"){
+                updateSetDebugInField(num, id, llList2String( comm,2), llList2String( comm,3));
+                //                updateSetHeader(num, id, llList2String( comm,2));
+            }
+        }
+
+
+        //ownerSayTag("(display): end link_message: " + str);
+
+    }
+
+
+}
+

@@ -1,0 +1,555 @@
+//
+// Copyright 2009-2013 Zvi ben Yaakov (a.k.a rdc) <hypergate.src@infosoc.net> http://TheHyperGates.com
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+// HyperGate Version 0.7.3
+
+
+
+/////////////// begin shared display functions ////////
+
+integer debugTags = 0;
+
+string moduleDisplayName = "Init Module";
+string displayStatus = "";
+
+publishDisplay(string status){
+
+    if(!( status == "")){
+        displayStatus = status;
+    }
+    if(!( displayStatus == "")){
+        llMessageLinked(LINK_SET, 0, "##display##updateSetText##" + moduleDisplayName + "|" + displayStatus , NULL_KEY);
+
+    }
+}
+
+
+publishDebug(string status){
+
+    if(!( status == "")){
+        //        displayStatus = status;
+    }
+    llMessageLinked(LINK_SET, 0, "##debug##updateSetDebug##" + moduleDisplayName + "##" + llDumpList2String(initDisplayData, "|") , NULL_KEY);
+
+}
+
+
+
+/////////////// begin  display related functions ////////
+
+// Returns number of Strides in a List
+
+integer fncStrideCount(list lstSource, integer intStride)
+{
+    return llGetListLength(lstSource) / intStride;
+}
+
+
+// Find a Stride within a List (returns stride index, and item subindex)
+list fncFindStride(list lstSource, list lstItem, integer intStride)
+{
+    integer intListIndex = llListFindList(lstSource, lstItem);
+
+    if (intListIndex == -1) { return [-1, -1]; }
+
+    integer intStrideIndex = intListIndex / intStride;
+    integer intSubIndex = intListIndex % intStride;
+
+    return [intStrideIndex, intSubIndex];
+}
+
+// Replace a Stride in a List
+list fncReplaceStride(list lstSource, list lstStride, integer intIndex, integer intStride)
+{
+    integer intNumStrides = fncStrideCount(lstSource, intStride);
+
+    if (llGetListLength(lstStride) != intStride) { return lstSource; }
+
+    if (intNumStrides != 0 && intIndex < intNumStrides)
+    {
+        integer intOffset = intIndex * intStride;
+        return llListReplaceList(lstSource, lstStride, intOffset, intOffset + (intStride - 1));
+    }
+    return lstSource;
+}
+
+
+list initDisplayData = [];
+integer displayStrideLength = 2;
+
+list checkExistingDisplays(string displayName){
+
+
+    return fncFindStride(initDisplayData, [displayName], displayStrideLength);
+
+}
+
+
+
+ownerSayTag(string data){
+
+    if(debugTags == 1){
+        llOwnerSay("(" + moduleDisplayName +  ")" + data);
+    }
+
+}
+
+addInitDisplayData(string displayName, string displayStatus){
+
+    initDisplayData += [displayName]; // name displayed on left
+    initDisplayData += [displayStatus]; // status displayed on right
+
+}
+
+
+updateInitDisplayData(list initData, integer displayIndex){
+
+
+    initDisplayData = fncReplaceStride(initDisplayData, initData, displayIndex, displayStrideLength);
+
+}
+
+
+refreshInitDisplayData(list initData){
+
+    string displayName = "";
+    string displayStatus = "";
+
+    // this block copies Init data into strings that you can use
+    displayName = llList2String(initData, 0);
+    displayStatus = llList2String(initData, 1);
+
+
+    list displayExists = checkExistingDisplays(displayName);
+    integer displayIndex = llList2Integer(displayExists, 0);
+
+
+    if(displayIndex == -1  )  {
+
+        addInitDisplayData(displayName, displayStatus);
+
+    } else {
+
+            updateInitDisplayData(initData, displayIndex);
+
+    }
+
+
+}
+
+
+updateSetDebug(string data){
+
+    //ownerSayTag("inside: updateSetText");
+
+
+    list initData = llParseString2List(data, ["|"], []);
+
+    refreshInitDisplayData(initData);
+
+    string displayText = "";
+    integer displayStrideCount = 0;
+
+    //        while( displayStrideCount < (llGetListLength(initDisplayData) / displayStrideLength )){
+
+
+
+    //                displayText +=  llList2String(initDisplayData, (displayStrideCount * displayStrideLength) ) + " : " + llList2String(initDisplayData, ((displayStrideCount * displayStrideLength) + 1) ) + "\n";
+
+    //            displayStrideCount++;
+    //        }
+
+
+    //        llSetText(displayText,<1.0,1.0,1.0>,1.0);
+
+    //ownerSayTag("leaving: updateSetText");
+
+    //return 0;
+
+}
+
+
+
+
+
+/////////////// end shared display functions ////////
+
+
+
+
+// http<->db related vars
+string protocol = "http";
+string thirdLevel = "basekix";
+string secondLevel = "rollin";
+string topLevel = "com";
+string URL ;
+
+key    initNodeid;                               // http request id
+key    initMenus;                               // http request id
+
+// Stargate configuration settings
+integer tpType = 0;
+integer hgEnabled = 0;
+
+
+
+initializeStrings(){
+
+    URL = protocol + "://" + thirdLevel + "." + secondLevel + "." + topLevel + "/"; // getHGData url
+
+}
+
+
+
+
+
+
+parseNodeConfig(string body){
+
+    //body = llEscapeURL(body);
+    //body = llUnescapeURL(body);
+
+    //    ownerSayTag("(parseNodeConfig)body: " + llStringLength(body) + "::" + body + "\n");
+
+    //    for(integer xx = 0; xx < llStringLength(body); xx++){
+    //    ownerSayTag("(parseNodeConfig)body: " + (string)xx + "::" + llGetSubString(body, xx, llStringLength(body)) + "\n");
+    ////        body = llGetSubString(body, 20, llStringLength(body));
+    //    }
+    //body = llStringTrim(body, STRING_TRIM);
+    //          integer i;
+
+    //           list lbody=llParseString2List(body,["\n"],[]);
+    //            integer count=llGetListLength(lbody);
+    //This turns newline characters char(10) into new lines in chat
+    //These are Unix/LSL style end of lines, use \r\n in place of \n for
+    //  Windows style end of line from web server.
+    //            for(i=0;i<count;i++)
+    //            {
+    //                llOwnerSay(llList2String(lbody,i));
+    //            }
+
+
+    list currentConfigData = llParseString2List(body, ["|"], [""]);
+
+    hgEnabled = llList2Integer(currentConfigData, 1);
+    llMessageLinked(LINK_SET, hgEnabled, "##settings##setHGStatus##", NULL_KEY);
+
+    tpType = llList2Integer(currentConfigData, 2);
+    llMessageLinked(LINK_SET, tpType, "##settings##setTPType##", NULL_KEY);
+
+
+}
+
+
+parseMenuInit(string body){
+
+    //    ownerSayTag("(parseMenuInit)body: " + llStringLength(body) + "::" + body + "\n");
+    //body = llStringTrim(body, STRING_TRIM);
+    //body = llGetSubString(body, 20, llStringLength(body));
+
+
+
+    list allMenuData = llParseString2List(body, ["##"], [""]);
+    list allMenuDetails = [];
+
+    integer typeCount = 0 ;
+    integer menuCount = 0 ;
+    list thisMenuData = [];
+    integer dataCount = 0 ;
+    list thisItemData = [];
+
+    while( typeCount < (llGetListLength(allMenuData)   )){
+
+        thisMenuData = llParseString2List(llList2String(allMenuData, typeCount), ["#"], [""]);
+        allMenuDetails = llParseString2List(llList2String(thisMenuData,  0), ["|"], [""]);
+
+        string menuName = llList2String(allMenuDetails, 0);
+        if(llList2String(allMenuDetails, 1) != ""){
+            ownerSayTag("initiating initMenu: " + llList2String(allMenuDetails, 1));
+
+            //            string firstLetter = llGetSubString(menuName,0,0);
+            //            string restLetters = llGetSubString(menuName,1,llStringLength(menuName));
+            //            firstLetter = llToUpper(firstLetter);
+            //            string cappedMenuName = firstLetter + restLetters;
+
+            llMessageLinked(LINK_SET, menuCount, "##settings##initMenu##" + llList2String(allMenuData,  typeCount), NULL_KEY);
+
+            updateSetDebug("Menu " + (string)menuCount + "|" + menuName);                    menuCount++;
+        } else {
+                ownerSayTag("NOT initiating initMenu: " + llList2String(allMenuDetails, 1));
+
+        }
+        typeCount++;
+    }
+
+    publishDebug("");
+
+}
+
+
+reinitGate(string initRequest){
+
+    //        ownerSayTag("initRequest: " + initRequest);
+    initNodeid = llHTTPRequest( initRequest , [], "" );
+
+
+}
+
+doInitMenus(){
+
+    //initialize menus
+    initMenus = llHTTPRequest( URL + "initMenus/" + llGetSimulatorHostname() + "&pos=" + (string)llGetPos() , [], "" );
+
+
+}
+
+float time = 2; // timer interval
+
+default
+{
+
+
+    state_entry()
+    {
+
+        publishDisplay("Registering Module");
+        llSetTimerEvent(time); // generate a timer event every 2 seconds
+        llSetText("..:: Welcome to The HyperGates ::..\nTheHyperGates.com\n- - -\nSuccessful " + moduleDisplayName +" Entry",<1.0,1.0,1.0>,1.0);
+
+    }
+
+    timer()
+    {
+        //llOwnerSay("init:default:timer");
+        //if( (llGetLinkNumber()) > 0 ){
+        llMessageLinked(LINK_ROOT, 0, "##core##loaded##init", NULL_KEY);
+        //}
+        llSetTimerEvent(time); // generate a timer event every 2 seconds
+
+    }
+
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        //    ownerSayTag("Core: begin link_message: " + str);
+
+        list comm = llParseString2List(str, ["##"], [""]);
+
+        string commStr_0 = llList2String( comm,0);
+        string commStr_1 = llList2String( comm,1);
+
+        if(commStr_0 == "init"){
+            //            llSay(0,str);
+            if(commStr_1 == "waitInit"){
+                llSetTimerEvent(0);
+
+                state preInit;
+            }
+            if(commStr_1 == "resetModule"){
+                publishDisplay("Resetting Module");
+
+                llSetTimerEvent(0);
+                llResetScript();
+            }
+        }
+    }
+    on_rez(integer start_param) {
+        // every time we're rezzed, reset the script
+        // this ensures that if we're transferred to a new owner, we're listening to them and not still to the previous one
+        llResetScript();
+        publishDisplay("Rezzed");
+        llSetText("..:: Welcome to The HyperGates ::..\nTheHyperGates.com\n- - -\nSuccessful " + moduleDisplayName +" Rez",<1.0,1.0,1.0>,1.0);
+    }
+
+}
+
+state preInit
+{
+    state_entry()
+    {
+
+        publishDisplay("Pre-Initializing");
+        llSetTimerEvent(1); // generate a timer event every 2 seconds
+
+    }
+
+
+    timer()
+    {
+        //llOwnerSay("init:preInit:timer");
+        llSetTimerEvent(0); // generate a timer event every 2 seconds
+        llMessageLinked(LINK_ROOT, 0, "##core##initialized##init", NULL_KEY);
+        state waitInit;
+
+    }
+
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        //    ownerSayTag("Core: begin link_message: " + str);
+
+        list comm = llParseString2List(str, ["##"], [""]);
+
+        string commStr_0 = llList2String( comm,0);
+        string commStr_1 = llList2String( comm,1);
+
+        if(commStr_0 == "init"){
+            //            llSay(0,str);
+            if(commStr_1 == "beginInit"){
+                llSetTimerEvent(0); // generate a timer event every 2 seconds
+                state initialize;
+            }  else  if(commStr_1 == "resetModule"){
+                    publishDisplay("Resetting Module");
+
+                llResetScript();
+            }
+        }
+    }
+
+}
+
+state waitInit
+{
+    state_entry()
+    {
+        publishDisplay("Waiting to Initialize");
+
+    }
+
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        //    ownerSayTag("Core: begin link_message: " + str);
+
+        list comm = llParseString2List(str, ["##"], [""]);
+
+        string commStr_0 = llList2String( comm,0);
+        string commStr_1 = llList2String( comm,1);
+
+        if(commStr_0 == "init"){
+            //            llSay(0,str);
+            if(commStr_1 == "beginInit"){
+                state initialize;
+            }  else  if(commStr_1 == "resetModule"){
+                    publishDisplay("Resetting Module");
+
+                llResetScript();
+            }
+        }
+    }
+
+
+}
+
+state initialize
+{
+    state_entry()
+    {
+
+        publishDisplay("Initializing");
+
+
+        initializeStrings();
+
+        //initialize HG network node
+        initNodeid = llHTTPRequest( URL + "initNode/" + llGetSimulatorHostname() + "&pos=" + (string)llGetPos() , [], "" );
+
+        //doInitMenus();
+
+        publishDisplay("Initialized");
+        llMessageLinked(LINK_SET, 0, "##core##initialized##init##" , NULL_KEY);
+
+        state activated;
+
+    }
+
+}
+
+state activated
+{
+    state_entry()
+    {
+
+        doInitMenus();
+
+    }
+
+
+    link_message(integer sender_num, integer num, string str, key id)
+    {
+        //ownerSayTag("Init: begin link_message: " + str);
+
+        list comm = llParseString2List(str, ["##"], [""]);
+
+        string commStr_0 = llList2String( comm,0);
+        string commStr_1 = llList2String( comm,1);
+
+        if(llList2String( comm,0) == "init"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "reinitGate"){
+                reinitGate(llList2String( comm,2));
+                //            llSay(0,str);
+            } else  if(llList2String( comm,1) == "doInitMenus"){
+                    doInitMenus();
+            }  else  if(commStr_1 == "resetModule"){
+                    publishDisplay("Resetting Module");
+
+                llResetScript();
+            }
+        }
+
+        if(llList2String( comm,0) == "display"){
+            //            llSay(0,str);
+            if(llList2String( comm,1) == "publishDisplay"){
+                publishDisplay("");
+            }
+        }
+
+
+        //ownerSayTag("Init: end link_message: " + str);
+
+    }
+
+    http_response(key id, integer status, list meta, string body) {
+
+        if ( id == initNodeid ){
+            if ( status == 499 )
+                ownerSayTag("request timed out for initNodeid ");
+            else if ( status != 200 )
+                ownerSayTag("while requesting initNodeid, the internet exploded!!");
+            else if ( (key)body == NULL_KEY )
+                ownerSayTag("No data found for initNodeid");
+            else
+                parseNodeConfig(body);
+
+        }
+
+        if ( id == initMenus ){
+            if ( status == 499 )
+                ownerSayTag("request timed out for initMenus ");
+            else if ( status != 200 )
+                ownerSayTag("while requesting initMenus, the internet exploded!!");
+            else if ( (key)body == NULL_KEY )
+                ownerSayTag("No data found for initMenus");
+            else
+                parseMenuInit(body);
+
+        }
+
+    }
+
+
+
+}
+
+
