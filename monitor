@@ -16,6 +16,23 @@
 
 // HyperGate Version 0.7.3
 
+//// Explanation
+//
+// Placing this script in any Object will register the Object on the HyperGate Network
+//
+// Once an Object has been successfully registered, it will be listed in the Menus of other HyperGates 
+// and will be listed on the web site
+//
+// There are two prerequisites for successful registration of the Object
+//
+//  - The Owner of the Object should be registered on the Network. 
+//      If the Owner has used a registered HyperGate on a grid other than the Home grid of the Owner, 
+//      then the Owner will automatically be registered.
+//
+//  - The Object should be rezzed on the Home grid of the Owner
+//
+////
+
 
 string  SOFTWARE_REV = "v0.7.3";
 
