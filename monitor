@@ -97,7 +97,7 @@ default
     {
  
         initializeStrings();
-        llSetTimerEvent(60.0);
+        llSetTimerEvent(120.0);
         init();
     }
 
